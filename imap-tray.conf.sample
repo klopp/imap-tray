@@ -3,10 +3,12 @@
 
   OnClick => '/usr/bin/thunderbird',
 
+  ShowHelp => 1,
+
   Interval  => '30',
 
-  IconNoNew => 'nonew-48-1.png',
   IconNew   => 'new-48-1.png',
+  IconNoNew => 'nonew-48-1.png',
   IconError => 'error-48-1.png',
 
   IMAP =>

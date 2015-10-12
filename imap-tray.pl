@@ -81,6 +81,10 @@ local $SIG{'ALRM'} = sub {
         else {
             _set_icon($icon_no_new);
         }
+
+        push @tooltip, "---\nRight-click: exit\nLeft-click: action"
+            if $opt->{'ShowHelp'};
+
         $trayicon->set_tooltip( join( "\n", @tooltip ) );
         $locked = 0;
     }
@@ -160,7 +164,8 @@ sub _check_one_imap {
         $unseen ||= 0;
         $recent ||= 0;
         $msgs   ||= 0;
-        say " $conf->{'mailboxes'}->[$_]: $unseen, $recent, $msgs" if $opt->{'Debug'};
+        say " $conf->{'mailboxes'}->[$_]: $unseen, $recent, $msgs"
+            if $opt->{'Debug'};
         $conf->{'new'} += $unseen;
     }
 
