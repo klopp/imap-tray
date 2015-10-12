@@ -5,9 +5,9 @@
 
   Interval  => '30',
 
-  IconNoNew => 'nonew-1.png',
-  IconNew   => 'new-1.png',
-  IconError => 'error-24.png',
+  IconNoNew => 'nonew-48-1.png',
+  IconNew   => 'new-48-1.png',
+  IconError => 'error-48-1.png',
 
   IMAP =>
   [
