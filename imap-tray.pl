@@ -10,9 +10,13 @@ use Modern::Perl;
 # ------------------------------------------------------------------------------
 use Gtk2 qw/-init/;
 use FindBin qw/$RealScript $RealBin/;
-use Net::IMAP::Simple;
 use Encode::IMAPUTF7;
+use Net::IMAP::Simple;
 use Data::Recursive::Encode;
+
+# ------------------------------------------------------------------------------
+use version;
+our $VERSION = 'v1.0.1';
 
 # ------------------------------------------------------------------------------
 my $locked;
@@ -24,22 +28,22 @@ my $cerror = _check_config();
 die "Invalid config file \"$config\": $cerror\n" if $cerror;
 $opt->{'Debug'} = $opt->{'Debug'};
 
-my $icon_no_new = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{IconNoNew} ),
-    $opt->{IconNoNew} ];
+my $icon_no_new = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconNoNew'} ),
+    $opt->{'IconNoNew'} ];
 my $icon_new
-    = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{IconNew} ), $opt->{IconNew} ];
-my $icon_error = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{IconError} ),
-    $opt->{IconError} ];
+    = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconNew'} ), $opt->{'IconNew'} ];
+my $icon_error = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconError'} ),
+    $opt->{'IconError'} ];
 my $icon_current = q{};
 
 my $trayicon = Gtk2::StatusIcon->new;
 $trayicon->signal_connect(
     'button_press_event' => sub {
         my ( undef, $event ) = @_;
-        if ( $event->button eq 3 ) {
+        if ( $event->button == 3 ) {
             Gtk2->main_quit;
         }
-        elsif ( $event->button eq 1 ) {
+        elsif ( $event->button == 1 ) {
             _on_click( $opt->{'OnClick'} );
         }
         1;
@@ -48,7 +52,7 @@ $trayicon->signal_connect(
 
 local $SIG{'ALRM'} = sub {
 
-    unless ($locked) {
+    if (!$locked) {
 
         $locked++;
         my $total  = 0;
@@ -59,7 +63,8 @@ local $SIG{'ALRM'} = sub {
 
             next unless $_->{'active'};
 
-            my $error = _imap_login($_) unless $_->{'imap'};
+            my $error;
+            $error = _imap_login($_) unless $_->{'imap'};
             $error = _check_one_imap($_) unless $error;
 
             if ($error) {
@@ -88,7 +93,7 @@ local $SIG{'ALRM'} = sub {
         $locked = 0;
     }
 
-    alarm( $opt->{'Interval'} );
+    alarm $opt->{'Interval'};
 };
 alarm 1;
 Gtk2->main;
@@ -98,7 +103,7 @@ sub _on_click {
 
     # TODO XZ...
     my ($cmd) = @_;
-    `$cmd`;
+    return system $cmd;
 }
 
 # ------------------------------------------------------------------------------
@@ -109,6 +114,7 @@ sub _set_icon {
         $trayicon->set_from_pixbuf( $icon->[0] );
         $icon_current = $icon->[1];
     }
+    return;
 }
 
 # ------------------------------------------------------------------------------
@@ -131,7 +137,7 @@ sub _imap_login {
     else {
         $conf->{'imap'} = $imap;
 
-        unless ( $conf->{'emailboxes'} ) {
+        if ( !$conf->{'emailboxes'} ) {
             $conf->{'emailboxes'} = [];
 
             for my $i ( 0 .. $#{ $conf->{'mailboxes'} } ) {
