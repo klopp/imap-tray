@@ -1,9 +1,15 @@
 # imap-tray
 Perl/Gtk IMAP checker
 
+## No new messages icon and tooltip:
+
 ![No new messages icon and tooltip](http://ato.su/resizer/i/0/2/a232d35e.png)
 
+## New messages icon and tooltip:
+
 ![New messages icon and tooltip](http://ato.su/resizer/i/2/0/4963746d.png)
+
+## Error icon and tooltip:
 
 ![Error icon and tooltip](http://ato.su/resizer/i/d/2/10180bd6.png)
 
