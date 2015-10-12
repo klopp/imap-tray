@@ -232,7 +232,8 @@ __END__
 
 1. Lowercase config keys?
 2. PID checking?
-3. ?
+3. SIGHUP handling?
+N. ?
 
 =cut
 
