@@ -16,14 +16,13 @@ use Data::Recursive::Encode;
 
 # ------------------------------------------------------------------------------
 my $locked;
-my $DEBUG;
 my $config = ( $RealScript =~ /^(.+)[.][^.]+$/ ? $1 : $RealScript ) . q{.conf};
 $config = "$RealBin/$config";
 $ARGV[0] and $config = $ARGV[0];
 my $opt    = Data::Recursive::Encode->decode_utf8( do($config) );
 my $cerror = _check_config();
 die "Invalid config file \"$config\": $cerror\n" if $cerror;
-$DEBUG = $opt->{'Debug'};
+$opt->{'Debug'} = $opt->{'Debug'};
 
 my $icon_no_new = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{IconNoNew} ),
     $opt->{IconNoNew} ];
@@ -115,7 +114,7 @@ sub _imap_login {
 
     my $error;
 
-    say $conf->{'name'} . ' login...' if $DEBUG;
+    say $conf->{'name'} . ' login...' if $opt->{'Debug'};
 
     my $imap
         = Net::IMAP::Simple->new( $conf->{'host'}, %{ $conf->{'opt'} } );
@@ -148,27 +147,27 @@ sub _imap_login {
 
 # ------------------------------------------------------------------------------
 sub _check_one_imap {
-    my ($opt) = @_;
+    my ($conf) = @_;
 
-    my $imap = $opt->{'imap'};
+    my $imap = $conf->{'imap'};
     my $error;
 
-    $opt->{'new'} = 0;
-    say $opt->{'name'} . q{:} if $DEBUG;
+    $conf->{'new'} = 0;
+    say $conf->{'name'} . q{:} if $conf->{'Debug'};
 
-    for ( 0 .. $#{ $opt->{'mailboxes'} } ) {
-        my ( $unseen, $recent, $msgs ) = $opt->{'imap'}->status($_);
+    for ( 0 .. $#{ $conf->{'mailboxes'} } ) {
+        my ( $unseen, $recent, $msgs ) = $conf->{'imap'}->status($_);
         $unseen ||= 0;
         $recent ||= 0;
         $msgs   ||= 0;
-        say " $opt->{'mailboxes'}->[$_]: $unseen, $recent, $msgs" if $DEBUG;
-        $opt->{'new'} += $unseen;
+        say " $conf->{'mailboxes'}->[$_]: $unseen, $recent, $msgs" if $opt->{'Debug'};
+        $conf->{'new'} += $unseen;
     }
 
     if ($error) {
         $error =~ s/^\s+|\s+$//gs;
-        say $error if $DEBUG;
-        $opt->{'new'} = 0;
+        say $error if $opt->{'Debug'};
+        $conf->{'new'} = 0;
     }
 
     return $error;
