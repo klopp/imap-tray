@@ -1,5 +1,7 @@
-# imap-tray
-Perl/Gtk IMAP checker
+# IMAP-tray
+Perl/Gtk IMAP checker.
+
+Config file can be readed from script directory or from first command-line argument. Format is Perl-based (see imap-tray.conf.sample). Format of IMAP/opt entries described in [Net::IMAP::Simple](https://metacpan.org/pod/Net::IMAP::Simple#new) documentation (*new* arguments).
 
 ## No new messages icon and tooltip:
 
@@ -12,6 +14,4 @@ Perl/Gtk IMAP checker
 ## Error icon and tooltip:
 
 ![Error icon and tooltip](http://ato.su/resizer/i/d/2/10180bd6.png)
-
-Config file can be readed from script directory or from first command-line argument. Format is Perl-based (see imap-tray.conf.sample). Format of IMAP/opt entries described in [Net::IMAP::Simple](https://metacpan.org/pod/Net::IMAP::Simple#new) documentation (*new* arguments).
 
