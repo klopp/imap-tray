@@ -1,0 +1,68 @@
+{
+  Debug => 1,
+
+  OnClick => '/usr/bin/thunderbird',
+
+  Interval  => '30',
+
+  IconNoNew => 'nonew-1.png',
+  IconNew   => 'new-1.png',
+  IconError => 'error-24.png',
+
+  IMAP =>
+  [
+    {
+      active    => 1,
+      name      => 'Yandex',
+      host      => 'imap.yandex.com:993',
+      login     => 'xxx@yandex.ru',
+      password  => 'xyz',
+      opt =>
+      {
+        ssl_version => 'TLSv1',
+        use_ssl     => 1,
+      },
+      mailboxes =>
+      [
+        'INBOX',
+        'Хостинг',
+        'Работа',
+      ],
+    },
+
+    {
+      active    => 1,
+      name      => 'Mail.RU',
+      host      => 'imap.mail.ru:993',
+      login     => 'xxx@mail.ru',
+      password  => 'xyz',
+      opt =>
+      {
+        ssl_version => 'TLSv1',
+        use_ssl     => 1,
+      },
+      mailboxes =>
+      [
+        'INBOX',
+      ],
+    },
+
+    {
+      active    => 1,
+      name      => 'Google',
+      host      => 'imap.googlemail.com:993',
+      login     => 'xxx@gmail.com',
+      password  => 'xyz',
+      opt =>
+      {
+        ssl_version => 'TLSv1',
+        use_ssl     => 1,
+      },
+      mailboxes =>
+      [
+        'INBOX',
+      ],
+    },
+
+  ],
+}
