@@ -219,3 +219,20 @@ END {
 }
 
 # ------------------------------------------------------------------------------
+
+__END__
+
+=pod
+
+=head1 SYNOPSIS
+
+./imap-tray.pl [config_file]
+
+=head1 TODO
+
+1. Lowercase config keys?
+2. PID checking?
+3. ?
+
+=cut
+
