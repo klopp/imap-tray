@@ -3,7 +3,7 @@
 
   OnClick => '/usr/bin/thunderbird',
 
-  ShowHelp => 1,
+  ShowHelp => "---\nRight-click: exit\nLeft-click: action",
 
   Interval  => '30',
 

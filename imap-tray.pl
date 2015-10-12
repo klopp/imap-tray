@@ -82,8 +82,7 @@ local $SIG{'ALRM'} = sub {
             _set_icon($icon_no_new);
         }
 
-        push @tooltip, "---\nRight-click: exit\nLeft-click: action"
-            if $opt->{'ShowHelp'};
+        push @tooltip, $opt->{'ShowHelp'} if $opt->{'ShowHelp'};
 
         $trayicon->set_tooltip( join( "\n", @tooltip ) );
         $locked = 0;
