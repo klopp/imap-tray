@@ -1,11 +1,14 @@
 {
   Debug => 1,
 
+  # left click action:
   OnClick => '/usr/bin/thunderbird',
 
+  # tooltip bottom:
   ShowHelp => "---\nRight-click: exit\nLeft-click: action",
 
-  Interval  => '30',
+  # seconds:
+  Interval  => '10',
 
   IconNew   => 'new-24-1.png',
   IconNoNew => 'nonew-24-1.png',
