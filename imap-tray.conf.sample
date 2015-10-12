@@ -7,9 +7,9 @@
 
   Interval  => '30',
 
-  IconNew   => 'new-48-1.png',
-  IconNoNew => 'nonew-48-1.png',
-  IconError => 'error-48-1.png',
+  IconNew   => 'new-24-1.png',
+  IconNoNew => 'nonew-24-1.png',
+  IconError => 'error-24-1.png',
 
   IMAP =>
   [
