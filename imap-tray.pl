@@ -129,9 +129,11 @@ sub _imap_login {
         = Net::IMAP::Simple->new( $conf->{'host'}, %{ $conf->{'opt'} } );
     if ( !$imap ) {
         $error = 'Unable to connect: ' . $Net::IMAP::Simple::errstr;
+        say $error if $opt->{'Debug'};
     }
     elsif ( !$imap->login( $conf->{'login'}, $conf->{'password'} ) ) {
         $error = 'Unable to login: ' . $imap->errstr;
+        say $error if $opt->{'Debug'};
         undef $imap;
     }
     else {
