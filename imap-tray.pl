@@ -164,7 +164,7 @@ sub _check_one_imap {
     my $error;
 
     $conf->{'new'} = 0;
-    say $conf->{'name'} . q{:} if $conf->{'Debug'};
+    say $conf->{'name'} . q{:} if $opt->{'Debug'};
 
     for ( 0 .. $#{ $conf->{'mailboxes'} } ) {
         my ( $unseen, $recent, $msgs ) = $conf->{'imap'}->status($_);
