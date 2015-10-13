@@ -167,7 +167,7 @@ sub _check_one_imap {
     say $conf->{'name'} . q{:} if $opt->{'Debug'};
 
     for ( 0 .. $#{ $conf->{'mailboxes'} } ) {
-        my ( $unseen, $recent, $msgs ) = $conf->{'imap'}->status($_);
+        my ( $unseen, $recent, $msgs ) = $conf->{'imap'}->status($conf->{'emailboxes'}->[$_]);
         $unseen ||= 0;
         $recent ||= 0;
         $msgs   ||= 0;
