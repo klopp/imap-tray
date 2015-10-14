@@ -78,13 +78,18 @@ local $SIG{'ALRM'} = sub {
             }
             else {
                 if ( $_->{'detailed'} ) {
-                    for my $i ( 0 .. $#{ $_->{'mailboxes'} } ) {
-                        push @tooltip,
-                              $_->{'name'} . '/'
-                            . $_->{'mailboxes'}->[$i] . ': '
-                            . $_->{'emailboxes'}->[$i]->[1]
-                            . ' new'
-                            if $_->{'emailboxes'}->[$i]->[1];
+                    if ( $_->{'new'} ) {
+                        for my $i ( 0 .. $#{ $_->{'mailboxes'} } ) {
+                            push @tooltip,
+                                  $_->{'name'} . '/'
+                                . $_->{'mailboxes'}->[$i] . ': '
+                                . $_->{'emailboxes'}->[$i]->[1] . ' new'
+                                if $_->{'emailboxes'}->[$i]->[1];
+                        }
+                    }
+                    else {
+                        push @tooltip, $_->{'name'} . ': 0 new';
+
                     }
                 }
                 else {
@@ -206,9 +211,15 @@ sub _check_one_imap {
         $error =~ s/^\s+|\s+$//gs;
         say $error if $opt->{'Debug'};
         $conf->{'new'} = 0;
+        $conf->{'imap'}->logout;
+        undef $conf->{'imap'};
     }
     else {
         $conf->{'stat_count'}++;
+
+        say "$conf->{'stat_count'} / $conf->{'reloginafter'}"
+            if $conf->{'reloginafter'} && $opt->{'Debug'};
+
         if (   $conf->{'reloginafter'}
             && $conf->{'stat_count'} > $conf->{'reloginafter'} )
         {
