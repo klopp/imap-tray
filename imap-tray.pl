@@ -196,8 +196,8 @@ sub _check_one_imap {
     }
     else {
         $conf->{'stat_count'}++;
-        if (   $conf->{'ReLoginAfter'}
-            && $conf->{'stat_count'} > $conf->{'ReLoginAfter'} )
+        if (   $conf->{'reloginafter'}
+            && $conf->{'stat_count'} > $conf->{'reloginafter'} )
         {
             $conf->{'imap'}->logout;
             undef $conf->{'imap'};
@@ -228,10 +228,10 @@ sub _check_config {
             if ref $_->{'mailboxes'} ne 'ARRAY'
             || $#{ $_->{'mailboxes'} } < 0;
 
-        if (   defined $_->{'ReLoginAfter'}
-            && $_->{'ReLoginAfter'} !~ /^\d+$/ )
+        if (   defined $_->{'reloginafter'}
+            && $_->{'reloginafter'} !~ /^\d+$/ )
             {
-                return "invalid \"ReLoginAfter\" value in \"IMAP/$name\"";
+                return "invalid \"reloginafter\" value in \"IMAP/$name\"";
             }
     }
 
