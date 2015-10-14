@@ -77,7 +77,19 @@ local $SIG{'ALRM'} = sub {
                 $errors++;
             }
             else {
-                push @tooltip, $_->{'name'} . ': ' . $_->{'new'} . ' new';
+                if ( $_->{'detailed'} ) {
+                    for my $i ( 0 .. $#{ $_->{'mailboxes'} } ) {
+                        push @tooltip,
+                              $_->{'name'} . '/'
+                            . $_->{'mailboxes'}->[$i] . ': '
+                            . $_->{'emailboxes'}->[$i]->[1]
+                            . ' new'
+                            if $_->{'emailboxes'}->[$i]->[1];
+                    }
+                }
+                else {
+                    push @tooltip, $_->{'name'} . ': ' . $_->{'new'} . ' new';
+                }
                 $total += $_->{'new'};
             }
         }
@@ -153,7 +165,7 @@ sub _imap_login {
             $conf->{'emailboxes'} = [];
 
             for my $i ( 0 .. $#{ $conf->{'mailboxes'} } ) {
-                $conf->{'emailboxes'}->[$i]
+                $conf->{'emailboxes'}->[$i]->[0]
                     = Encode::IMAPUTF7::encode( 'IMAP-UTF-7',
                     $conf->{'mailboxes'}->[$i] );
             }
@@ -173,7 +185,7 @@ sub _check_one_imap {
 
     for ( 0 .. $#{ $conf->{'mailboxes'} } ) {
         my ( $unseen, $recent, $msgs )
-            = $conf->{'imap'}->status( $conf->{'emailboxes'}->[$_] );
+            = $conf->{'imap'}->status( $conf->{'emailboxes'}->[$_]->[0] );
 
         if ( $conf->{'imap'}->waserr ) {
             $error = $conf->{'imap'}->errstr;
@@ -187,6 +199,7 @@ sub _check_one_imap {
         say " $conf->{'mailboxes'}->[$_]: $unseen, $recent, $msgs"
             if $opt->{'Debug'};
         $conf->{'new'} += $unseen;
+        $conf->{'emailboxes'}->[$_]->[1] = $unseen;
     }
 
     if ($error) {
@@ -228,11 +241,11 @@ sub _check_config {
             if ref $_->{'mailboxes'} ne 'ARRAY'
             || $#{ $_->{'mailboxes'} } < 0;
 
-        if (   defined $_->{'reloginafter'}
+        if ( defined $_->{'reloginafter'}
             && $_->{'reloginafter'} !~ /^\d+$/ )
-            {
-                return "invalid \"reloginafter\" value in \"IMAP/$name\"";
-            }
+        {
+            return "invalid \"reloginafter\" value in \"IMAP/$name\"";
+        }
     }
 
     return;
