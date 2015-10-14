@@ -22,7 +22,13 @@
       host      => 'imap.yandex.com:993',
       login     => 'xxx@yandex.ru',
       password  => 'xyz',
+      
+      # relogin after N status() requests:
       reloginafter  => 1024, 
+
+      # show mailboxes in tooltip:
+      detailed => 1,
+
       opt =>
       {
         ssl_version => 'TLSv1',
