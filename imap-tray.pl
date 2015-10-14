@@ -28,12 +28,17 @@ my $cerror = _check_config();
 die "Invalid config file \"$config\": $cerror\n" if $cerror;
 $opt->{'Debug'} = $opt->{'Debug'};
 
-my $icon_no_new = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconNoNew'} ),
-    $opt->{'IconNoNew'} ];
+my $icon_no_new = [
+    Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconNoNew'} ),
+    $opt->{'IconNoNew'}
+];
 my $icon_new
-    = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconNew'} ), $opt->{'IconNew'} ];
-my $icon_error = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconError'} ),
-    $opt->{'IconError'} ];
+    = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconNew'} ),
+    $opt->{'IconNew'} ];
+my $icon_error = [
+    Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconError'} ),
+    $opt->{'IconError'}
+];
 my $icon_current = q{};
 
 my $trayicon = Gtk2::StatusIcon->new;
@@ -52,7 +57,7 @@ $trayicon->signal_connect(
 
 local $SIG{'ALRM'} = sub {
 
-    if (!$locked) {
+    if ( !$locked ) {
 
         $locked++;
         my $total  = 0;
@@ -64,7 +69,7 @@ local $SIG{'ALRM'} = sub {
             next unless $_->{'active'};
 
             my $error;
-            $error = _imap_login($_) unless $_->{'imap'};
+            $error = _imap_login($_)     unless $_->{'imap'};
             $error = _check_one_imap($_) unless $error;
 
             if ($error) {
@@ -125,6 +130,11 @@ sub _imap_login {
 
     say $conf->{'name'} . ' login...' if $opt->{'Debug'};
 
+    $conf->{'opt'}->{'timeout'} = $opt->{'Interval'}
+        unless defined $conf->{'opt'}->{'timeout'};
+    $conf->{'opt'}->{'use_select_cache'} = 0;
+    $conf->{'stat_count'} = 0;
+
     my $imap
         = Net::IMAP::Simple->new( $conf->{'host'}, %{ $conf->{'opt'} } );
     if ( !$imap ) {
@@ -148,10 +158,6 @@ sub _imap_login {
                     $conf->{'mailboxes'}->[$i] );
             }
         }
-        $conf->{'opt'}->{'timeout'} = $opt->{'Interval'}
-            unless defined $conf->{'opt'}->{'timeout'};
-        $conf->{'opt'}->{'use_select_cache'} = 0
-            unless defined $conf->{'opt'}->{'use_select_cache'};
     }
     return $error;
 }
@@ -160,14 +166,21 @@ sub _imap_login {
 sub _check_one_imap {
     my ($conf) = @_;
 
-    my $imap = $conf->{'imap'};
     my $error;
 
     $conf->{'new'} = 0;
     say $conf->{'name'} . q{:} if $opt->{'Debug'};
 
     for ( 0 .. $#{ $conf->{'mailboxes'} } ) {
-        my ( $unseen, $recent, $msgs ) = $conf->{'imap'}->status($conf->{'emailboxes'}->[$_]);
+        my ( $unseen, $recent, $msgs )
+            = $conf->{'imap'}->status( $conf->{'emailboxes'}->[$_] );
+
+        if ( $conf->{'imap'}->waserr ) {
+            $error = $conf->{'imap'}->errstr;
+            undef $conf->{'imap'};
+            last;
+        }
+
         $unseen ||= 0;
         $recent ||= 0;
         $msgs   ||= 0;
@@ -180,6 +193,15 @@ sub _check_one_imap {
         $error =~ s/^\s+|\s+$//gs;
         say $error if $opt->{'Debug'};
         $conf->{'new'} = 0;
+    }
+    else {
+        $conf->{'stat_count'}++;
+        if (   $conf->{'ReLoginAfter'}
+            && $conf->{'stat_count'} > $conf->{'ReLoginAfter'} )
+        {
+            $conf->{'imap'}->logout;
+            undef $conf->{'imap'};
+        }
     }
 
     return $error;
@@ -205,6 +227,12 @@ sub _check_config {
         return "no mailboxes in \"IMAP/$name\""
             if ref $_->{'mailboxes'} ne 'ARRAY'
             || $#{ $_->{'mailboxes'} } < 0;
+
+        if (   defined $_->{'ReLoginAfter'}
+            && $_->{'ReLoginAfter'} !~ /^\d+$/ )
+            {
+                return "invalid \"ReLoginAfter\" value in \"IMAP/$name\"";
+            }
     }
 
     return;
