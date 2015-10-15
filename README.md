@@ -11,6 +11,10 @@ Config file can be readed from script directory or from first command-line argum
 
 ![New messages icon and tooltip](http://ato.su/resizer/i/2/0/4963746d.png)
 
+## New messages icon and tooltip, with "dateiled => 1":
+
+![New detailed messages icon and tooltip](http://ato.su/resizer/i/f/b/6bd2dea3.png)
+
 ## Error icon and tooltip:
 
 ![Error icon and tooltip](http://ato.su/resizer/i/d/2/10180bd6.png)
