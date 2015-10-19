@@ -23,6 +23,7 @@ my $locked;
 my $config = ( $RealScript =~ /^(.+)[.][^.]+$/ ? $1 : $RealScript ) . q{.conf};
 $config = "$RealBin/$config";
 $ARGV[0] and $config = $ARGV[0];
+
 my $opt    = Data::Recursive::Encode->decode_utf8( do($config) );
 my $cerror = _check_config();
 die "Invalid config file \"$config\": $cerror\n" if $cerror;
@@ -46,7 +47,40 @@ $trayicon->signal_connect(
     'button_press_event' => sub {
         my ( undef, $event ) = @_;
         if ( $event->button == 3 ) {
-            Gtk2->main_quit;
+            my $menu = Gtk2::Menu->new;
+
+            for my $imap ( @{ $opt->{'IMAP'} } ) {
+                my $label = '[_] ' . $imap->{'name'};
+                $label = '[*] ' . $imap->{'name'} if $imap->{'active'};
+                
+                if( $imap ->{'error'} )
+                {
+                    $label = $label.' !';
+                }
+                elsif( $imap ->{'new'} )
+                {
+                    $label = $label.' '.$imap->{'new'};
+                }
+                
+                my $item = Gtk2::MenuItem->new($label);
+                $item->signal_connect(
+                    activate => sub { $imap->{'active'} = $imap->{'active'} ? 0 : 1 } );
+                $item->show;
+                $menu->append($item);
+            }
+
+            my $item = Gtk2::SeparatorMenuItem->new;
+            $item->show;
+            $menu->append($item);
+
+            $item = Gtk2::MenuItem->new('Quit');
+            $item->signal_connect( activate => sub { Gtk2->main_quit } );
+            $item->show;
+            $menu->append($item);
+
+            $menu->show_all;
+            $menu->popup( undef, undef, undef, undef, $event->button,
+                $event->time );
         }
         elsif ( $event->button == 1 ) {
             _on_click( $opt->{'OnClick'} );
@@ -69,11 +103,13 @@ local $SIG{'ALRM'} = sub {
             next unless $_->{'active'};
 
             my $error;
+            $_->{'error'} = 0;
             $error = _imap_login($_)     unless $_->{'imap'};
             $error = _check_one_imap($_) unless $error;
 
             if ($error) {
                 push @tooltip, $_->{'name'} . ': ' . $error;
+                $_->{'error'} = 1;
                 $errors++;
             }
             else {
@@ -117,8 +153,55 @@ local $SIG{'ALRM'} = sub {
 
     alarm $opt->{'Interval'};
 };
+
 alarm 1;
 Gtk2->main;
+
+# ------------------------------------------------------------------------------
+sub _dialog {
+    my $msg    = shift;
+    my $dialog = Gtk2::Dialog->new(
+        $msg,
+        undef, 'destroy-with-parent'
+
+            #        , 'gtk-ok' => 'reject'
+    );
+    my $label = Gtk2::Label->new( $msg x 10 );
+    $dialog->get_content_area()->add($label);
+
+    #    $dialog->signal_connect( response => sub { Gtk2->main_quit } );
+    $dialog->show_all;
+}
+
+# ------------------------------------------------------------------------------
+
+=pod
+sub _trayMenu {
+    my $self    = shift;
+    my $widget  = shift;
+    my $event   = shift;
+    
+    my @m;
+    
+    push( @m, { label => 'Local Shell',     stockicon => 'gtk-home',        code => sub { $PACMain::FUNCS{_MAIN}{_GUI}{shellBtn} -> clicked; } } );
+    push( @m, { separator => 1 } );
+    push( @m, { label => 'Clusters',        stockicon => 'pac-cluster-manager', submenu => _menuClusterConnections } );
+    push( @m, { label => 'Favourites',      stockicon => 'pac-favourite-on',    submenu => _menuFavouriteConnections } );
+    push( @m, { label => 'Connect to',      stockicon => 'pac-group',       submenu => _menuAvailableConnections( $PACMain::FUNCS{_MAIN}{_GUI}{treeConnections}{data} ) } );
+    push( @m, { separator => 1 } );
+    push( @m, { label => 'Preferences...',  stockicon => 'gtk-preferences',     code => sub { $$self{_MAIN}{_CONFIG} -> show; } } );
+    push( @m, { label => 'Clusters...',     stockicon => 'gtk-justify-fill',    code => sub { $$self{_MAIN}{_CLUSTER} -> show; }  } );
+    push( @m, { label => 'Show Window',     stockicon => 'gtk-home',        code => sub { $$self{_MAIN} -> _showConnectionsList; } } );
+    push( @m, { separator => 1 } );
+    push( @m, { label => 'About PAC',       stockicon => 'gtk-about',       code => sub { $$self{_MAIN} -> _showAboutWindow; } }  );
+    push( @m, { label => 'Exit',            stockicon => 'gtk-quit',        code => sub { $$self{_MAIN} -> _quitProgram; } } );
+    
+    _wPopUpMenu( \@m, $event, 'below calling widget' );
+    
+    return 1;
+}
+
+=cut
 
 # ------------------------------------------------------------------------------
 sub _on_click {
