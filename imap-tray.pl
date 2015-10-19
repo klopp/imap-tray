@@ -47,7 +47,7 @@ $trayicon->signal_connect(
     'button_press_event' => sub {
         my ( undef, $event ) = @_;
         if ( $event->button == 3 ) {
-            my $menu = Gtk2::Menu->new;
+            my ( $menu, $item ) = ( Gtk2::Menu->new );
 
             for my $imap ( @{ $opt->{'IMAP'} } ) {
                 my $label = $imap->{'name'};
@@ -62,14 +62,14 @@ $trayicon->signal_connect(
                     $label = $label.' '.$imap->{'new'};
                 }
                 
-                my $item = Gtk2::MenuItem->new($label);
+                $item = Gtk2::MenuItem->new($label);
                 $item->signal_connect(
                     activate => sub { $imap->{'active'} = $imap->{'active'} ? 0 : 1 } );
                 $item->show;
                 $menu->append($item);
             }
 
-            my $item = Gtk2::SeparatorMenuItem->new;
+            $item = Gtk2::SeparatorMenuItem->new;
             $item->show;
             $menu->append($item);
 
@@ -172,36 +172,6 @@ sub _dialog {
     #    $dialog->signal_connect( response => sub { Gtk2->main_quit } );
     $dialog->show_all;
 }
-
-# ------------------------------------------------------------------------------
-
-=pod
-sub _trayMenu {
-    my $self    = shift;
-    my $widget  = shift;
-    my $event   = shift;
-    
-    my @m;
-    
-    push( @m, { label => 'Local Shell',     stockicon => 'gtk-home',        code => sub { $PACMain::FUNCS{_MAIN}{_GUI}{shellBtn} -> clicked; } } );
-    push( @m, { separator => 1 } );
-    push( @m, { label => 'Clusters',        stockicon => 'pac-cluster-manager', submenu => _menuClusterConnections } );
-    push( @m, { label => 'Favourites',      stockicon => 'pac-favourite-on',    submenu => _menuFavouriteConnections } );
-    push( @m, { label => 'Connect to',      stockicon => 'pac-group',       submenu => _menuAvailableConnections( $PACMain::FUNCS{_MAIN}{_GUI}{treeConnections}{data} ) } );
-    push( @m, { separator => 1 } );
-    push( @m, { label => 'Preferences...',  stockicon => 'gtk-preferences',     code => sub { $$self{_MAIN}{_CONFIG} -> show; } } );
-    push( @m, { label => 'Clusters...',     stockicon => 'gtk-justify-fill',    code => sub { $$self{_MAIN}{_CLUSTER} -> show; }  } );
-    push( @m, { label => 'Show Window',     stockicon => 'gtk-home',        code => sub { $$self{_MAIN} -> _showConnectionsList; } } );
-    push( @m, { separator => 1 } );
-    push( @m, { label => 'About PAC',       stockicon => 'gtk-about',       code => sub { $$self{_MAIN} -> _showAboutWindow; } }  );
-    push( @m, { label => 'Exit',            stockicon => 'gtk-quit',        code => sub { $$self{_MAIN} -> _quitProgram; } } );
-    
-    _wPopUpMenu( \@m, $event, 'below calling widget' );
-    
-    return 1;
-}
-
-=cut
 
 # ------------------------------------------------------------------------------
 sub _on_click {
