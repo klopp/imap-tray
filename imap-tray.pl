@@ -50,8 +50,8 @@ $trayicon->signal_connect(
             my $menu = Gtk2::Menu->new;
 
             for my $imap ( @{ $opt->{'IMAP'} } ) {
-                my $label = '[_] ' . $imap->{'name'};
-                $label = '[*] ' . $imap->{'name'} if $imap->{'active'};
+                my $label = $imap->{'name'};
+                $label = '[*] ' . $label if $imap->{'active'};
                 
                 if( $imap ->{'error'} )
                 {
