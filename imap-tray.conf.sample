@@ -11,6 +11,8 @@
   Interval  => '10',
 
   IconNew   => 'new-24-1.png',
+  IconQuit  => 'exit.png',
+  IconMail  => 'mail-default.png',
   IconNoNew => 'nonew-24-1.png',
   IconError => 'error-24-1.png',
 
@@ -18,6 +20,7 @@
   [
     {
       active    => 1,
+      icon      => 'yandex.com.png',
       name      => 'Yandex',
       host      => 'imap.yandex.com:993',
       login     => 'xxx@yandex.ru',
@@ -44,6 +47,7 @@
 
     {
       active    => 1,
+      icon      => 'mail.ru.png',
       name      => 'Mail.RU',
       host      => 'imap.mail.ru:993',
       login     => 'xxx@mail.ru',
@@ -62,6 +66,7 @@
 
     {
       active    => 1,
+      icon      => 'googlemail.com.png',
       name      => 'Google',
       host      => 'imap.googlemail.com:993',
       login     => 'xxx@gmail.com',
