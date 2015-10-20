@@ -13,31 +13,106 @@ use FindBin qw/$RealScript $RealBin/;
 use Encode::IMAPUTF7;
 use Net::IMAP::Simple;
 use Data::Recursive::Encode;
+use Data::Printer;
+use LWP::Simple;
+use Try::Catch;
+use URI;
 
 # ------------------------------------------------------------------------------
 use version;
 our $VERSION = 'v1.0.1';
+my $FAVICON       = 'http://www.google.com/s2/favicons?domain=%s';
+my %DEFAULT_ICONS = (
+    qr/yahoo.com$/      => 'yahoo.com.png',
+    qr/yandex.com$/     => 'yandex.com.png',
+    qr/mail.ru$/        => 'mail.ru.png',
+    qr/rambler.ru$/     => 'rambler.ru.png',
+    qr/googlemail.com$/ => 'googlemail.com.png',
+);
 
 # ------------------------------------------------------------------------------
 my $locked;
 my $config = ( $RealScript =~ /^(.+)[.][^.]+$/ ? $1 : $RealScript ) . q{.conf};
 $config = "$RealBin/$config";
+my $ipath = "$RealBin/i";
 $ARGV[0] and $config = $ARGV[0];
 
 my $opt    = Data::Recursive::Encode->decode_utf8( do($config) );
 my $cerror = _check_config();
 die "Invalid config file \"$config\": $cerror\n" if $cerror;
-$opt->{'Debug'} = $opt->{'Debug'};
 
+# ------------------------------------------------------------------------------
+for my $imap ( @{ $opt->{'IMAP'} } ) {
+
+    my $domain = $imap->{host};
+    $domain =~ s/:.*$//s;
+
+    if ( !$imap->{'icon'} ) {
+        for ( keys %DEFAULT_ICONS ) {
+            $imap->{'icon'} = $DEFAULT_ICONS{$_}, last
+                if $domain =~ $_;
+        }
+    }
+
+    if ( $imap->{'icon'} ) {
+        try {
+            $imap->{'image'}
+                = Gtk2::Image->new_from_file("$ipath/$imap->{'icon'}");
+        }
+        catch {
+            say $_ if $opt->{'Debug'};
+        };
+    }
+
+    if ( !$imap->{'image'} ) {
+
+        my $icofile = "$ipath/$domain.icon";
+
+        if ( !-f $icofile ) {
+
+            my $icon = get( sprintf $FAVICON, $domain );
+            if ($icon) {
+                if ( open my $f, '>', $icofile ) {
+                    binmode $f, ':bytes';
+                    print $f $icon;
+                    close $f;
+                    try {
+                        $imap->{'image'} = Gtk2::Image->new_from_file($icofile);
+                    }
+                    catch {
+                        say $_ if $opt->{'Debug'};
+                    };
+                }
+            }
+        }
+        else {
+            try {
+                $imap->{'image'} = Gtk2::Image->new_from_file($icofile);
+            }
+            catch {
+                say $_ if $opt->{'Debug'};
+            };
+        }
+
+        $imap->{'image'}
+            = Gtk2::Image->new_from_file( "$ipath/" . $opt->{'IconMail'} )
+            unless $imap->{'image'};
+    }
+}
+
+# ------------------------------------------------------------------------------
+my $icon_quit
+    = Gtk2::Image->new_from_file( "$ipath/" . $opt->{'IconQuit'} );
 my $icon_no_new = [
-    Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconNoNew'} ),
+    Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{'IconNoNew'} ),
     $opt->{'IconNoNew'}
 ];
-my $icon_new
-    = [ Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconNew'} ),
-    $opt->{'IconNew'} ];
+my $icon_new = [
+    Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{'IconNew'} ),
+    $opt->{'IconNew'}
+];
 my $icon_error = [
-    Gtk2::Gdk::Pixbuf->new_from_file( $opt->{'IconError'} ),
+    Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{'IconError'} ),
     $opt->{'IconError'}
 ];
 my $icon_current = q{};
@@ -52,19 +127,18 @@ $trayicon->signal_connect(
             for my $imap ( @{ $opt->{'IMAP'} } ) {
                 my $label = $imap->{'name'};
                 $label = '[*] ' . $label if $imap->{'active'};
-                
-                if( $imap ->{'error'} )
-                {
-                    $label = $label.' !';
+
+                if ( $imap->{'error'} ) {
+                    $label = $label . ' !';
                 }
-                elsif( $imap ->{'new'} )
-                {
-                    $label = $label.' '.$imap->{'new'};
+                elsif ( $imap->{'new'} ) {
+                    $label = $label . ' ' . $imap->{'new'};
                 }
-                
-                $item = Gtk2::MenuItem->new($label);
-                $item->signal_connect(
-                    activate => sub { $imap->{'active'} = $imap->{'active'} ? 0 : 1 } );
+
+                $item = Gtk2::ImageMenuItem->new($label);
+                $item->set_image( $imap->{'image'} );
+                $item->signal_connect( activate =>
+                        sub { $imap->{'active'} = $imap->{'active'} ? 0 : 1 } );
                 $item->show;
                 $menu->append($item);
             }
@@ -73,7 +147,8 @@ $trayicon->signal_connect(
             $item->show;
             $menu->append($item);
 
-            $item = Gtk2::MenuItem->new('Quit');
+            $item = Gtk2::ImageMenuItem->new('Quit');
+            $item->set_image( $icon_quit );
             $item->signal_connect( activate => sub { Gtk2->main_quit } );
             $item->show;
             $menu->append($item);
