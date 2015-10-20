@@ -19,3 +19,10 @@ Config file can be readed from script directory or from first command-line argum
 
 ![Error icon and tooltip](http://ato.su/resizer/i/d/2/10180bd6.png)
 
+## Context menu, all servers checking is ON:
+
+![Context menu, all servers checking is ON](http://ato.su/resizer/i/e/2/74fc7eee.png)
+
+## Context menu, Ato.SU and Yandex checking is OFF:
+
+![Context menu, Ato.SU and Yandex checking is OFF](http://ato.su/resizer/i/1/3/3152c1a5.png)
