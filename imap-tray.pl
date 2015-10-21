@@ -13,10 +13,8 @@ use FindBin qw/$RealScript $RealBin/;
 use Encode::IMAPUTF7;
 use Net::IMAP::Simple;
 use Data::Recursive::Encode;
-use Data::Printer;
 use LWP::Simple;
 use Try::Catch;
-use URI;
 
 # ------------------------------------------------------------------------------
 use version;
