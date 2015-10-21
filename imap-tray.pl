@@ -125,7 +125,9 @@ $trayicon->signal_connect(
 
             for my $imap ( @{ $opt->{'IMAP'} } ) {
 
-                $item = Gtk2::ImageMenuItem->new( $imap->{'name'} );
+                my $label = $imap->{'name'};
+                $label .= " ($imap->{'new'})" if $imap->{'new'};
+                $item = Gtk2::ImageMenuItem->new( $label );
                 my $dest = $imap->{'image'}->get_pixbuf->copy;
                 if ( !$imap->{'active'} ) {
                     $dest->saturate_and_pixelate( $dest, 0.01, 1 );
@@ -398,6 +400,7 @@ __END__
 1. Lowercase config keys?
 2. PID checking?
 3. SIGHUP handling?
+4. IDN support?
 N. ?
 
 =cut
