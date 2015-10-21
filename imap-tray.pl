@@ -27,6 +27,7 @@ my %DEFAULT_ICONS = (
     qr/yandex.com$/     => 'yandex.com.png',
     qr/mail.ru$/        => 'mail.ru.png',
     qr/rambler.ru$/     => 'rambler.ru.png',
+    qr/hotmail.com$/    => 'hotmail.com.png',
     qr/googlemail.com$/ => 'googlemail.com.png',
 );
 
@@ -57,7 +58,7 @@ for my $imap ( @{ $opt->{'IMAP'} } ) {
     if ( $imap->{'icon'} ) {
         try {
             $imap->{'image'}
-                = Gtk2::Image->new_from_file("$ipath/$imap->{'icon'}");
+                = Gtk2::Image->new_from_file("$ipath/m/$imap->{'icon'}");
         }
         catch {
             say $_ if $opt->{'Debug'};
@@ -66,7 +67,7 @@ for my $imap ( @{ $opt->{'IMAP'} } ) {
 
     if ( !$imap->{'image'} ) {
 
-        my $icofile = "$ipath/$domain.icon";
+        my $icofile = "$ipath/m/$domain.icon";
 
         if ( !-f $icofile ) {
 
@@ -95,7 +96,7 @@ for my $imap ( @{ $opt->{'IMAP'} } ) {
         }
 
         $imap->{'image'}
-            = Gtk2::Image->new_from_file( "$ipath/" . $opt->{'IconMail'} )
+            = Gtk2::Image->new_from_file( "$ipath/m/" . $opt->{'IconMail'} )
             unless $imap->{'image'};
     }
 }
@@ -125,18 +126,35 @@ $trayicon->signal_connect(
             my ( $menu, $item ) = ( Gtk2::Menu->new );
 
             for my $imap ( @{ $opt->{'IMAP'} } ) {
-                my $label = $imap->{'name'};
-                $label = '[*] ' . $label if $imap->{'active'};
 
-                if ( $imap->{'error'} ) {
-                    $label = $label . ' !';
-                }
-                elsif ( $imap->{'new'} ) {
-                    $label = $label . ' ' . $imap->{'new'};
-                }
+                #my $label = $imap->{'name'};
+                #$label = "<s>$label</s>" unless $imap->{'active'};
+                #$label = '[*] ' . $label if $imap->{'active'};
 
-                $item = Gtk2::ImageMenuItem->new($label);
-                $item->set_image( $imap->{'image'} );
+                #if ( $imap->{'error'} ) {
+                #    $label = $label . ' !';
+                #}
+                #elsif ( $imap->{'new'} ) {
+                #    $label = $label . ' ' . $imap->{'new'};
+                #}
+
+                $item = Gtk2::ImageMenuItem->new($imap->{'name'});
+#                my $src = $imap->{'image'}->get_pixbuf->copy;
+                my $dest = $imap->{'image'}->get_pixbuf->copy;
+                if( !$imap->{'active'})
+                {
+                    $dest->saturate_and_pixelate( $dest, 0.01, 1 );
+                }
+                elsif ( $imap->{'error'} ) {
+                    $dest->saturate_and_pixelate( $dest, 10, 1 );
+                }
+                
+#                my $src = $imap->{'image'}->get_pixbuf->copy;
+#                my $dest = $imap->{'image'}->get_pixbuf->copy;
+#                $src->saturate_and_pixelate( $dest, 10, 1 );
+                
+                my $image = Gtk2::Image->new_from_pixbuf($dest);
+                $item->set_image( $image );
                 $item->signal_connect( activate =>
                         sub { $imap->{'active'} = $imap->{'active'} ? 0 : 1 } );
                 $item->show;
