@@ -25,4 +25,4 @@ Config file can be readed from script directory or from first command-line argum
 
 ## Context menu, Ato.SU and Google checking is OFF:
 
-![Context menu, Ato.SU and Google checking is OFF](http://ato.su/resizer/i/1/3/3152c1a5.png)
+![Context menu, Ato.SU and Google checking is OFF](http://ato.su/resizer/i/b/c/6ba082d4.png)
