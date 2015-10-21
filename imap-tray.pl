@@ -28,6 +28,7 @@ my %DEFAULT_ICONS = (
     qr/mail.ru$/        => 'mail.ru.png',
     qr/rambler.ru$/     => 'rambler.ru.png',
     qr/hotmail.com$/    => 'hotmail.com.png',
+    qr/outlook.com$/    => 'outlook.com.png',
     qr/googlemail.com$/ => 'googlemail.com.png',
 );
 
@@ -127,19 +128,7 @@ $trayicon->signal_connect(
 
             for my $imap ( @{ $opt->{'IMAP'} } ) {
 
-                #my $label = $imap->{'name'};
-                #$label = "<s>$label</s>" unless $imap->{'active'};
-                #$label = '[*] ' . $label if $imap->{'active'};
-
-                #if ( $imap->{'error'} ) {
-                #    $label = $label . ' !';
-                #}
-                #elsif ( $imap->{'new'} ) {
-                #    $label = $label . ' ' . $imap->{'new'};
-                #}
-
                 $item = Gtk2::ImageMenuItem->new($imap->{'name'});
-#                my $src = $imap->{'image'}->get_pixbuf->copy;
                 my $dest = $imap->{'image'}->get_pixbuf->copy;
                 if( !$imap->{'active'})
                 {
@@ -148,10 +137,6 @@ $trayicon->signal_connect(
                 elsif ( $imap->{'error'} ) {
                     $dest->saturate_and_pixelate( $dest, 10, 1 );
                 }
-                
-#                my $src = $imap->{'image'}->get_pixbuf->copy;
-#                my $dest = $imap->{'image'}->get_pixbuf->copy;
-#                $src->saturate_and_pixelate( $dest, 10, 1 );
                 
                 my $image = Gtk2::Image->new_from_pixbuf($dest);
                 $item->set_image( $image );
