@@ -101,8 +101,7 @@ for my $imap ( @{ $opt->{'IMAP'} } ) {
 }
 
 # ------------------------------------------------------------------------------
-my $icon_quit
-    = Gtk2::Image->new_from_file( "$ipath/" . $opt->{'IconQuit'} );
+my $icon_quit   = Gtk2::Image->new_from_file( "$ipath/" . $opt->{'IconQuit'} );
 my $icon_no_new = [
     Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{'IconNoNew'} ),
     $opt->{'IconNoNew'}
@@ -126,18 +125,17 @@ $trayicon->signal_connect(
 
             for my $imap ( @{ $opt->{'IMAP'} } ) {
 
-                $item = Gtk2::ImageMenuItem->new($imap->{'name'});
+                $item = Gtk2::ImageMenuItem->new( $imap->{'name'} );
                 my $dest = $imap->{'image'}->get_pixbuf->copy;
-                if( !$imap->{'active'})
-                {
+                if ( !$imap->{'active'} ) {
                     $dest->saturate_and_pixelate( $dest, 0.01, 1 );
                 }
                 elsif ( $imap->{'error'} ) {
                     $dest->saturate_and_pixelate( $dest, 10, 1 );
                 }
-                
+
                 my $image = Gtk2::Image->new_from_pixbuf($dest);
-                $item->set_image( $image );
+                $item->set_image($image);
                 $item->signal_connect( activate =>
                         sub { $imap->{'active'} = $imap->{'active'} ? 0 : 1 } );
                 $item->show;
@@ -149,7 +147,7 @@ $trayicon->signal_connect(
             $menu->append($item);
 
             $item = Gtk2::ImageMenuItem->new('Quit');
-            $item->set_image( $icon_quit );
+            $item->set_image($icon_quit);
             $item->signal_connect( activate => sub { Gtk2->main_quit } );
             $item->show;
             $menu->append($item);
@@ -193,7 +191,7 @@ local $SIG{'ALRM'} = sub {
                     if ( $_->{'new'} ) {
                         for my $i ( 0 .. $#{ $_->{'mailboxes'} } ) {
                             push @tooltip,
-                                  $_->{'name'} . '/'
+                                  $_->{'name'} . q{/}
                                 . $_->{'mailboxes'}->[$i] . ': '
                                 . $_->{'emailboxes'}->[$i]->[1] . ' new'
                                 if $_->{'emailboxes'}->[$i]->[1];
@@ -232,22 +230,6 @@ local $SIG{'ALRM'} = sub {
 
 alarm 1;
 Gtk2->main;
-
-# ------------------------------------------------------------------------------
-sub _dialog {
-    my $msg    = shift;
-    my $dialog = Gtk2::Dialog->new(
-        $msg,
-        undef, 'destroy-with-parent'
-
-            #        , 'gtk-ok' => 'reject'
-    );
-    my $label = Gtk2::Label->new( $msg x 10 );
-    $dialog->get_content_area()->add($label);
-
-    #    $dialog->signal_connect( response => sub { Gtk2->main_quit } );
-    $dialog->show_all;
-}
 
 # ------------------------------------------------------------------------------
 sub _on_click {
