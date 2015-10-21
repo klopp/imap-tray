@@ -21,7 +21,7 @@ Config file can be readed from script directory or from first command-line argum
 
 ## Context menu, all servers checking is ON:
 
-![Context menu, all servers checking is ON](http://ato.su/resizer/i/e/2/74fc7eee.png)
+![Context menu, all servers checking is ON](http://ato.su/resizer/i/f/9/6c3db88e.png)
 
 ## Context menu, Ato.SU and Google checking is OFF:
 
