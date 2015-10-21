@@ -18,7 +18,7 @@ use Try::Catch;
 
 # ------------------------------------------------------------------------------
 use version;
-our $VERSION = 'v1.0.1';
+our $VERSION = 'v1.0.2';
 my $FAVICON       = 'http://www.google.com/s2/favicons?domain=%s';
 my %DEFAULT_ICONS = (
     qr/yahoo.com$/      => 'yahoo.com.png',
