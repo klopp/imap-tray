@@ -5,7 +5,7 @@
   OnClick => '/usr/bin/thunderbird',
 
   # tooltip bottom:
-  ShowHelp => "---\nRight-click: exit\nLeft-click: action",
+  ShowHelp => "---\nRight-click: menu\nLeft-click: action",
 
   # seconds:
   Interval  => '10',
