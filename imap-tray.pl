@@ -16,11 +16,9 @@ use Net::IMAP::Simple;
 use LWP::Simple;
 use Try::Catch;
 
-use Data::Printer;
-
 # ------------------------------------------------------------------------------
 use version;
-our $VERSION = 'v1.0.3';
+our $VERSION = 'v1.0.4';
 my $FAVICON       = 'http://www.google.com/s2/favicons?domain=%s';
 my %DEFAULT_ICONS = (
     qr/yahoo.com$/      => 'yahoo.com.png',
@@ -44,7 +42,7 @@ my $cerror = _check_config();
 die "Invalid config file \"$config\": $cerror\n" if $cerror;
 
 # ------------------------------------------------------------------------------
-for my $imap ( @{ $opt->{IMAP} } ) {
+for my $imap ( @{ $opt->{imap} } ) {
 
     my $domain = $imap->{host};
     $domain =~ s/:.*$//s;
@@ -125,7 +123,7 @@ $trayicon->signal_connect(
         if ( $event->button == 3 ) {
             my ( $menu, $item ) = ( Gtk2::Menu->new );
 
-            for my $imap ( @{ $opt->{IMAP} } ) {
+            for my $imap ( @{ $opt->{imap} } ) {
 
                 my $label = $imap->{name};
                 $label .= " ($imap->{new})" if $imap->{new};
@@ -404,8 +402,8 @@ sub _lowerkeys
 
 # ------------------------------------------------------------------------------
 END {
-    if ( $opt && ref $opt->{IMAP} eq 'ARRAY' ) {
-        for ( @{ $opt->{IMAP} } ) {
+    if ( $opt && ref $opt->{imap} eq 'ARRAY' ) {
+        for ( @{ $opt->{imap} } ) {
             $_->{imap}->logout if $_->{imap};
             undef $_->{imap};
         }
