@@ -42,33 +42,31 @@ $ARGV[0] and $config = $ARGV[0];
 my $opt    = _lowerkeys(do($config));
 my $cerror = _check_config();
 die "Invalid config file \"$config\": $cerror\n" if $cerror;
-p $opt;
-exit;
 
 # ------------------------------------------------------------------------------
-for my $imap ( @{ $opt->{'IMAP'} } ) {
+for my $imap ( @{ $opt->{IMAP} } ) {
 
     my $domain = $imap->{host};
     $domain =~ s/:.*$//s;
 
-    if ( !$imap->{'icon'} ) {
+    if ( !$imap->{icon} ) {
         for ( keys %DEFAULT_ICONS ) {
-            $imap->{'icon'} = $DEFAULT_ICONS{$_}, last
+            $imap->{icon} = $DEFAULT_ICONS{$_}, last
                 if $domain =~ $_;
         }
     }
 
-    if ( $imap->{'icon'} ) {
+    if ( $imap->{icon} ) {
         try {
-            $imap->{'image'}
-                = Gtk2::Image->new_from_file("$ipath/m/$imap->{'icon'}");
+            $imap->{image}
+                = Gtk2::Image->new_from_file("$ipath/m/$imap->{icon}");
         }
         catch {
-            say $_ if $opt->{'debug'};
+            say $_ if $opt->{debug};
         };
     }
 
-    if ( !$imap->{'image'} ) {
+    if ( !$imap->{image} ) {
 
         my $icofile = "$ipath/m/$domain.icon";
 
@@ -81,42 +79,42 @@ for my $imap ( @{ $opt->{'IMAP'} } ) {
                     print $f $icon;
                     close $f;
                     try {
-                        $imap->{'image'} = Gtk2::Image->new_from_file($icofile);
+                        $imap->{image} = Gtk2::Image->new_from_file($icofile);
                     }
                     catch {
-                        say $_ if $opt->{'debug'};
+                        say $_ if $opt->{debug};
                     };
                 }
             }
         }
         else {
             try {
-                $imap->{'image'} = Gtk2::Image->new_from_file($icofile);
+                $imap->{image} = Gtk2::Image->new_from_file($icofile);
             }
             catch {
-                say $_ if $opt->{'debug'};
+                say $_ if $opt->{debug};
             };
         }
 
-        $imap->{'image'}
-            = Gtk2::Image->new_from_file( "$ipath/m/" . $opt->{'iconmail'} )
-            unless $imap->{'image'};
+        $imap->{image}
+            = Gtk2::Image->new_from_file( "$ipath/m/" . $opt->{iconmail} )
+            unless $imap->{image};
     }
 }
 
 # ------------------------------------------------------------------------------
-my $icon_quit   = Gtk2::Image->new_from_file( "$ipath/" . $opt->{'iconquit'} );
+my $icon_quit   = Gtk2::Image->new_from_file( "$ipath/" . $opt->{iconquit} );
 my $icon_no_new = [
-    Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{'iconnonew'} ),
-    $opt->{'iconnonew'}
+    Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{iconnonew} ),
+    $opt->{iconnonew}
 ];
 my $icon_new = [
-    Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{'iconnew'} ),
-    $opt->{'iconnew'}
+    Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{iconnew} ),
+    $opt->{iconnew}
 ];
 my $icon_error = [
-    Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{'iconerror'} ),
-    $opt->{'iconerror'}
+    Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{iconerror} ),
+    $opt->{iconerror}
 ];
 my $icon_current = q{};
 
@@ -127,23 +125,23 @@ $trayicon->signal_connect(
         if ( $event->button == 3 ) {
             my ( $menu, $item ) = ( Gtk2::Menu->new );
 
-            for my $imap ( @{ $opt->{'IMAP'} } ) {
+            for my $imap ( @{ $opt->{IMAP} } ) {
 
-                my $label = $imap->{'name'};
-                $label .= " ($imap->{'new'})" if $imap->{'new'};
+                my $label = $imap->{name};
+                $label .= " ($imap->{new})" if $imap->{new};
                 $item = Gtk2::ImageMenuItem->new($label);
-                my $dest = $imap->{'image'}->get_pixbuf->copy;
-                if ( !$imap->{'active'} ) {
+                my $dest = $imap->{image}->get_pixbuf->copy;
+                if ( !$imap->{active} ) {
                     $dest->saturate_and_pixelate( $dest, 0.01, 1 );
                 }
-                elsif ( $imap->{'error'} ) {
+                elsif ( $imap->{error} ) {
                     $dest->saturate_and_pixelate( $dest, 10, 1 );
                 }
 
                 my $image = Gtk2::Image->new_from_pixbuf($dest);
                 $item->set_image($image);
                 $item->signal_connect( activate =>
-                        sub { $imap->{'active'} = $imap->{'active'} ? 0 : 1 } );
+                        sub { $imap->{active} = $imap->{active} ? 0 : 1 } );
                 $item->show;
                 $menu->append($item);
             }
@@ -163,13 +161,13 @@ $trayicon->signal_connect(
                 $event->time );
         }
         elsif ( $event->button == 1 ) {
-            _on_click( $opt->{'onclick'} );
+            _on_click( $opt->{onclick} );
         }
         1;
     }
 );
 
-local $SIG{'ALRM'} = sub {
+local $SIG{ALRM} = sub {
 
     if ( !$locked ) {
 
@@ -178,40 +176,40 @@ local $SIG{'ALRM'} = sub {
         my $errors = 0;
         my @tooltip;
 
-        for ( @{ $opt->{'imap'} } ) {
+        for ( @{ $opt->{imap} } ) {
 
-            next unless $_->{'active'};
+            next unless $_->{active};
 
             my $error;
-            $_->{'error'} = 0;
-            $error = _imap_login($_)     unless $_->{'imap'};
+            $_->{error} = 0;
+            $error = _imap_login($_)     unless $_->{imap};
             $error = _check_one_imap($_) unless $error;
 
             if ($error) {
-                push @tooltip, $_->{'name'} . ': ' . $error;
-                $_->{'error'} = 1;
+                push @tooltip, $_->{name} . ': ' . $error;
+                $_->{error} = 1;
                 $errors++;
             }
             else {
-                if ( $_->{'detailed'} ) {
-                    if ( $_->{'new'} ) {
-                        for my $i ( 0 .. $#{ $_->{'mailboxes'} } ) {
+                if ( $_->{detailed} ) {
+                    if ( $_->{new} ) {
+                        for my $i ( 0 .. $#{ $_->{mailboxes} } ) {
                             push @tooltip,
-                                  $_->{'name'} . q{/}
-                                . $_->{'mailboxes'}->[$i] . ': '
-                                . $_->{'emailboxes'}->[$i]->[1] . ' new'
-                                if $_->{'emailboxes'}->[$i]->[1];
+                                  $_->{name} . q{/}
+                                . $_->{mailboxes}->[$i] . ': '
+                                . $_->{emailboxes}->[$i]->[1] . ' new'
+                                if $_->{emailboxes}->[$i]->[1];
                         }
                     }
                     else {
-                        push @tooltip, $_->{'name'} . ': 0 new';
+                        push @tooltip, $_->{name} . ': 0 new';
 
                     }
                 }
                 else {
-                    push @tooltip, $_->{'name'} . ': ' . $_->{'new'} . ' new';
+                    push @tooltip, $_->{name} . ': ' . $_->{new} . ' new';
                 }
-                $total += $_->{'new'};
+                $total += $_->{new};
             }
         }
 
@@ -225,13 +223,13 @@ local $SIG{'ALRM'} = sub {
             _set_icon($icon_no_new);
         }
 
-        push @tooltip, $opt->{'showhelp'} if $opt->{'showhelp'};
+        push @tooltip, $opt->{showhelp} if $opt->{showhelp};
 
         $trayicon->set_tooltip( join( "\n", @tooltip ) );
         $locked = 0;
     }
 
-    alarm $opt->{'interval'};
+    alarm $opt->{interval};
 };
 
 alarm 1;
@@ -262,34 +260,34 @@ sub _imap_login {
 
     my $error;
 
-    say $conf->{'name'} . ' login...' if $opt->{'debug'};
+    say $conf->{name} . ' login...' if $opt->{debug};
 
-    $conf->{'opt'}->{'timeout'} = $opt->{'Interval'}
-        unless defined $conf->{'opt'}->{'timeout'};
-    $conf->{'opt'}->{'use_select_cache'} = 0;
-    $conf->{'stat_count'} = 0;
+    $conf->{opt}->{timeout} = $opt->{Interval}
+        unless defined $conf->{opt}->{timeout};
+    $conf->{opt}->{use_select_cache} = 0;
+    $conf->{stat_count} = 0;
 
     my $imap
-        = Net::IMAP::Simple->new( $conf->{'host'}, %{ $conf->{'opt'} } );
+        = Net::IMAP::Simple->new( $conf->{host}, %{ $conf->{opt} } );
     if ( !$imap ) {
         $error = 'Unable to connect: ' . $Net::IMAP::Simple::errstr;
-        say $error if $opt->{'debug'};
+        say $error if $opt->{debug};
     }
-    elsif ( !$imap->login( $conf->{'login'}, $conf->{'password'} ) ) {
+    elsif ( !$imap->login( $conf->{login}, $conf->{password} ) ) {
         $error = 'Unable to login: ' . $imap->errstr;
-        say $error if $opt->{'debug'};
+        say $error if $opt->{debug};
         undef $imap;
     }
     else {
-        $conf->{'imap'} = $imap;
+        $conf->{imap} = $imap;
 
-        if ( !$conf->{'emailboxes'} ) {
-            $conf->{'emailboxes'} = [];
+        if ( !$conf->{emailboxes} ) {
+            $conf->{emailboxes} = [];
 
-            for my $i ( 0 .. $#{ $conf->{'mailboxes'} } ) {
-                $conf->{'emailboxes'}->[$i]->[0]
+            for my $i ( 0 .. $#{ $conf->{mailboxes} } ) {
+                $conf->{emailboxes}->[$i]->[0]
                     = Encode::IMAPUTF7::encode( 'IMAP-UTF-7',
-                    $conf->{'mailboxes'}->[$i] );
+                    $conf->{mailboxes}->[$i] );
             }
         }
     }
@@ -302,46 +300,46 @@ sub _check_one_imap {
 
     my $error;
 
-    $conf->{'new'} = 0;
-    say $conf->{'name'} . q{:} if $opt->{'debug'};
+    $conf->{new} = 0;
+    say $conf->{name} . q{:} if $opt->{debug};
 
-    for ( 0 .. $#{ $conf->{'mailboxes'} } ) {
+    for ( 0 .. $#{ $conf->{mailboxes} } ) {
         my ( $unseen, $recent, $msgs )
-            = $conf->{'imap'}->status( $conf->{'emailboxes'}->[$_]->[0] );
+            = $conf->{imap}->status( $conf->{emailboxes}->[$_]->[0] );
 
-        if ( $conf->{'imap'}->waserr ) {
-            $error = $conf->{'imap'}->errstr;
-            undef $conf->{'imap'};
+        if ( $conf->{imap}->waserr ) {
+            $error = $conf->{imap}->errstr;
+            undef $conf->{imap};
             last;
         }
 
         $unseen ||= 0;
         $recent ||= 0;
         $msgs   ||= 0;
-        say " $conf->{'mailboxes'}->[$_]: $unseen, $recent, $msgs"
-            if $opt->{'debug'};
-        $conf->{'new'} += $unseen;
-        $conf->{'emailboxes'}->[$_]->[1] = $unseen;
+        say " $conf->{mailboxes}->[$_]: $unseen, $recent, $msgs"
+            if $opt->{debug};
+        $conf->{new} += $unseen;
+        $conf->{emailboxes}->[$_]->[1] = $unseen;
     }
 
     if ($error) {
         $error =~ s/^\s+|\s+$//gs;
-        say $error if $opt->{'debug'};
-        $conf->{'new'} = 0;
-        $conf->{'imap'}->logout;
-        undef $conf->{'imap'};
+        say $error if $opt->{debug};
+        $conf->{new} = 0;
+        $conf->{imap}->logout;
+        undef $conf->{imap};
     }
     else {
-        $conf->{'stat_count'}++;
+        $conf->{stat_count}++;
 
-        say "$conf->{'stat_count'} / $conf->{'reloginafter'}"
-            if $conf->{'reloginafter'} && $opt->{'debug'};
+        say "$conf->{stat_count} / $conf->{reloginafter}"
+            if $conf->{reloginafter} && $opt->{debug};
 
-        if (   $conf->{'reloginafter'}
-            && $conf->{'stat_count'} > $conf->{'reloginafter'} )
+        if (   $conf->{reloginafter}
+            && $conf->{stat_count} > $conf->{reloginafter} )
         {
-            $conf->{'imap'}->logout;
-            undef $conf->{'imap'};
+            $conf->{imap}->logout;
+            undef $conf->{imap};
         }
     }
 
@@ -352,28 +350,28 @@ sub _check_one_imap {
 sub _check_config {
     return 'bad format' unless ref $opt eq 'HASH';
 
-    return 'no "onclick" key' unless $opt->{'onclick'};
+    return 'no "onclick" key' unless $opt->{onclick};
     return 'bad "interval" key'
-        if !$opt->{'interval'}
-        || $opt->{'interval'} !~ /^\d+$/;
-    return 'invalid "IMAP" list' unless ref $opt->{'imap'} eq 'ARRAY';
+        if !$opt->{interval}
+        || $opt->{interval} !~ /^\d+$/;
+    return 'invalid "IMAP" list' unless ref $opt->{imap} eq 'ARRAY';
 
-    for ( @{ $opt->{'imap'} } ) {
+    for ( @{ $opt->{imap} } ) {
 
-        return 'no "host" key in "IMAP" list' unless $_->{'host'};
-        $_->{'name'} ||= $_->{'host'};
-        my $name = $_->{'name'};
-        return "no \"password\" key in \"IMAP/$name\"" unless $_->{'password'};
-        return "no \"login\" key in \"IMAP/$name\""    unless $_->{'login'};
+        return 'no "host" key in "IMAP" list' unless $_->{host};
+        $_->{name} ||= $_->{host};
+        my $name = $_->{name};
+        return "no \"password\" key in \"IMAP/$name\"" unless $_->{password};
+        return "no \"login\" key in \"IMAP/$name\""    unless $_->{login};
         return "no mailboxes in \"IMAP/$name\""
-            if ref $_->{'mailboxes'} ne 'ARRAY'
-            || $#{ $_->{'mailboxes'} } < 0;
+            if ref $_->{mailboxes} ne 'ARRAY'
+            || $#{ $_->{mailboxes} } < 0;
 
-        @{ $_->{'mailboxes'} }
-            = map { $_ = decode_utf8($_) } @{ $_->{'mailboxes'} };
+        @{ $_->{mailboxes} }
+            = map { $_ = decode_utf8($_) } @{ $_->{mailboxes} };
 
-        if ( defined $_->{'reloginafter'}
-            && $_->{'reloginafter'} !~ /^\d+$/ )
+        if ( defined $_->{reloginafter}
+            && $_->{reloginafter} !~ /^\d+$/ )
         {
             return "invalid \"reloginafter\" value in \"IMAP/$name\"";
         }
@@ -406,10 +404,10 @@ sub _lowerkeys
 
 # ------------------------------------------------------------------------------
 END {
-    if ( $opt && ref $opt->{'IMAP'} eq 'ARRAY' ) {
-        for ( @{ $opt->{'IMAP'} } ) {
-            $_->{'imap'}->logout if $_->{'imap'};
-            undef $_->{'imap'};
+    if ( $opt && ref $opt->{IMAP} eq 'ARRAY' ) {
+        for ( @{ $opt->{IMAP} } ) {
+            $_->{imap}->logout if $_->{imap};
+            undef $_->{imap};
         }
     }
 }
