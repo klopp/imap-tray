@@ -11,8 +11,9 @@ use Modern::Perl;
 use Gtk2 qw/-init/;
 use FindBin qw/$RealScript $RealBin/;
 use Encode::IMAPUTF7;
+use Encode qw/decode_utf8/;
 use Net::IMAP::Simple;
-use Data::Recursive::Encode;
+#use Data::Recursive::Encode;
 use LWP::Simple;
 use Try::Catch;
 
@@ -37,7 +38,8 @@ $config = "$RealBin/$config";
 my $ipath = "$RealBin/i";
 $ARGV[0] and $config = $ARGV[0];
 
-my $opt    = Data::Recursive::Encode->decode_utf8( do($config) );
+#my $opt    = Data::Recursive::Encode->decode_utf8( do($config) );
+my $opt    = do($config);
 my $cerror = _check_config();
 die "Invalid config file \"$config\": $cerror\n" if $cerror;
 
@@ -364,6 +366,8 @@ sub _check_config {
         return "no mailboxes in \"IMAP/$name\""
             if ref $_->{'mailboxes'} ne 'ARRAY'
             || $#{ $_->{'mailboxes'} } < 0;
+
+        @{$_->{'mailboxes'}} = map { $_ = decode_utf8($_) } @{$_->{'mailboxes'}}; 
 
         if ( defined $_->{'reloginafter'}
             && $_->{'reloginafter'} !~ /^\d+$/ )
