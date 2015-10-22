@@ -4,6 +4,12 @@
   # left click action:
   OnClick => '/usr/bin/thunderbird',
 
+#  OnClick => sub
+#  {
+#    print "Click!\n";  
+#  },
+
+
   # tooltip bottom:
   ShowHelp => "---\nRight-click: menu\nLeft-click: action",
 
