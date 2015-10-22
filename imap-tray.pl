@@ -422,11 +422,10 @@ __END__
 
 =head1 TODO
 
-1. Lowercase config keys?
-2. PID checking?
-3. SIGHUP handling?
-4. IDN support?
-N. ?
+*. PID checking?
+*. SIGHUP handling?
+*. IDN support?
+*. ?
 
 =cut
 
