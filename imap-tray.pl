@@ -237,8 +237,13 @@ Gtk2->main;
 sub _on_click {
 
     # TODO XZ...
-    my ($cmd) = @_;
-    return system $cmd;
+    my ($todo) = @_;
+    
+    if( ref $todo eq 'CODE' )
+    {
+        return &$todo;
+    }
+    return system $todo;
 }
 
 # ------------------------------------------------------------------------------
