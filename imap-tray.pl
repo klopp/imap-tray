@@ -102,6 +102,7 @@ for my $imap ( @{ $opt->{imap} } ) {
 
 # ------------------------------------------------------------------------------
 my $icon_quit   = Gtk2::Image->new_from_file( "$ipath/" . $opt->{iconquit} );
+my $icon_relogin   = Gtk2::Image->new_from_file( "$ipath/" . $opt->{iconrelogin} );
 my $icon_no_new = [
     Gtk2::Gdk::Pixbuf->new_from_file( "$ipath/" . $opt->{iconnonew} ),
     $opt->{iconnonew}
@@ -145,6 +146,21 @@ $trayicon->signal_connect(
             }
 
             $item = Gtk2::SeparatorMenuItem->new;
+            $item->show;
+            $menu->append($item);
+
+            $item = Gtk2::ImageMenuItem->new('Re-login');
+            $item->set_image($icon_relogin);
+            $item->signal_connect
+            ( 
+              activate => sub 
+              { 
+                for( @{ $opt->{imap} } ) 
+                {
+                  $_->{stat_count} = $_->{reloginafter} + 1;
+                }
+              } 
+            );
             $item->show;
             $menu->append($item);
 
