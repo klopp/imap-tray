@@ -16,11 +16,12 @@
   # seconds:
   Interval  => '10',
 
-  IconMail  => 'mail-default.png',
-  IconNoNew => 'nonew.png',
-  IconNew   => 'new.png',
-  IconError => 'error.png',
-  IconQuit  => 'quit.png',
+  IconMail    => 'mail-default.png',
+  IconNoNew   => 'nonew.png',
+  IconNew     => 'new.png',
+  IconError   => 'error.png',
+  IconQuit    => 'quit.png',
+  IconReLogin => 'relogin.png',
 
   IMAP =>
   [
