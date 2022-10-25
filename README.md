@@ -32,6 +32,7 @@ Perl/Gtk IMAP уведомлятор.
     {
         Yandex => 
         {
+            # Icon      => 'online',
             Icon      => 'yandex.com.png',
             Active    => 1,
             Host      => 'imap.yandex.com:993',
