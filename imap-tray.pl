@@ -289,7 +289,7 @@ sub _init_imap_data
     if ( !$ico ) {
         my $uri  = URI->new( 'http://' . $data->{host} );
         my $root = $PDS->get_root_domain( $uri->host );
-        if ( -e $IMAP_ICO_PATH . $root . '.png' ) {
+        if ( $root && -e $IMAP_ICO_PATH . $root . '.png' ) {
             $ico = $root . '.png';
         }
         else {
