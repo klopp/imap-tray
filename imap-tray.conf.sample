@@ -41,7 +41,6 @@
         {
             # Icon     => 'online',
             Active    => 1,
-            Name      => 'Mail.RU',
             Host      => 'imap.mail.ru:993',
             Login     => 'USER@mail.ru',
             Password  => 'PASSWORD',
@@ -61,7 +60,6 @@
         {
             # Icon     => 'online',
             Active    => 1,
-            Name      => 'Google',
             Host      => 'imap.googlemail.com:993',
             Login     => 'USER@gmail.com',
             Password => 'PASSWORD',
