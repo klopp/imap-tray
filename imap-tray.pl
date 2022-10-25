@@ -1,8 +1,5 @@
 #!/usr/bin/perl
 # ------------------------------------------------------------------------------
-#  Created on: 11.10.2015, 21:09:27
-#  Author: Vsevolod Lutovinov <klopp@yandex.ru>
-# ------------------------------------------------------------------------------
 use utf8::all;
 use open qw/:std :utf8/;
 use Modern::Perl;
@@ -16,7 +13,7 @@ use Encode qw/decode_utf8/;
 use Encode::IMAPUTF7;
 use English qw/-no_match_vars/;
 use File::Basename;
-use Gtk3 -init;
+use Gtk3 qw/-init/;
 use Net::IMAP::Simple;
 use Try::Tiny;
 use URI;
@@ -37,15 +34,15 @@ my %APP_ICO_SRC = (
     imap      => 'imap.png',
 );
 my %APP_ICO;
-my $opt = _parse_config();
+my $OPT = _parse_config();
 _init_app_ico();
 
 my $PDS = Domain::PublicSuffix->new();
-while ( my ( undef, $v ) = each %{ $opt->{imap} } ) {
+while ( my ( undef, $v ) = each %{ $OPT->{imap} } ) {
     _init_imap_data($v);
 }
 
-my $trayicon = _create_tray_icon();
+my $TRAYICON = _create_tray_icon();
 local $SIG{ALRM} = \&_mail_loop;
 alarm 1;
 
@@ -60,7 +57,7 @@ sub _mail_loop
     ++$locked;
 
     my ( $errors, $unseen, @tooltip ) = ( 0, 0 );
-    while ( my ( $name, $data ) = each %{ $opt->{imap} } ) {
+    while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
         next unless $data->{mail_active};
 
         my $error;
@@ -93,11 +90,12 @@ sub _mail_loop
     elsif ($unseen) {
         $ico = 'new';
     }
-    $trayicon->set_from_pixbuf( $APP_ICO{$ico}->get_pixbuf );
-    $trayicon->set_tooltip_text( join "\n", @tooltip );
+    $TRAYICON->set_from_pixbuf( $APP_ICO{$ico}->get_pixbuf );
+    $TRAYICON->set_tooltip_text( join "\n", @tooltip );
 
-    alarm $opt->{interval};
+    alarm $OPT->{interval};
     $locked = 0;
+    return;
 }
 
 # ------------------------------------------------------------------------------
@@ -111,7 +109,7 @@ sub _check_one_imap
     ++$data->{mail_count};
 
     say sprintf '%s :: checking mail, attempt %u from %u...', $name, $data->{mail_count}, $data->{reconnectafter}
-        if $opt->{debug};
+        if $OPT->{debug};
 
     for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
 
@@ -125,18 +123,18 @@ sub _check_one_imap
         $data->{mail_unseen} += $unseen;
         $data->{mail_boxes}->[$i]->[1] = $unseen;
         say sprintf '%s[%s] :: OK, unseen: %u', $name, $data->{mailboxes}->[$i], $unseen
-            if $opt->{debug};
+            if $OPT->{debug};
     }
 
     if ($error) {
         $error =~ s/^\s+|\s+$//gsm;
         say sprintf '%s :: error %s', $name, $error
-            if $opt->{debug};
+            if $OPT->{debug};
     }
     else {
         if ( $data->{mail_count} >= $data->{reconnectafter} ) {
             say sprintf '%s :: max attempts (%u), logout', $name, $data->{mail_count}
-                if $opt->{debug};
+                if $OPT->{debug};
             $data->{imap}->logout;
             undef $data->{imap};
         }
@@ -159,15 +157,15 @@ sub _imap_login
         = Net::IMAP::Simple->new( $data->{host}, %{ $data->{opt} } );
     if ( !$imap ) {
         $error = sprintf '%s :: unable to connect (%s)', $name, $Net::IMAP::Simple::errstr;
-        say $error if $opt->{debug};
+        say $error if $OPT->{debug};
     }
     elsif ( !$imap->login( $data->{login}, $data->{password} ) ) {
         $error = sprintf '%s :: unable to login (%s)', $name, $imap->errstr;
-        say $error if $opt->{debug};
+        say $error if $OPT->{debug};
         undef $imap;
     }
     else {
-        say sprintf '%s :: login OK', $name if $opt->{debug};
+        say sprintf '%s :: login OK', $name if $OPT->{debug};
         $data->{imap} = $imap;
     }
     return $error;
@@ -186,7 +184,7 @@ sub _create_tray_icon
             if ( $event->button == 3 ) {
                 my ( $menu, $item ) = ( Gtk3::Menu->new );
 
-                while ( my ( $name, $data ) = each %{ $opt->{imap} } ) {
+                while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
                     $item = Gtk3::ImageMenuItem->new($name);
                     my $dest = $data->{image}->get_pixbuf->copy;
                     if ( !$data->{mail_active} ) {
@@ -218,7 +216,7 @@ sub _create_tray_icon
                 $item->set_image( $APP_ICO{reconnect} );
                 $item->signal_connect(
                     activate => sub {
-                        while ( my ( undef, $data ) = each %{ $opt->{imap} } ) {
+                        while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
                             $data->{imap}->logout if $data->{imap};
                             undef $data->{imap};
                         }
@@ -250,10 +248,10 @@ sub _create_tray_icon
 # ------------------------------------------------------------------------------
 sub _on_click
 {
-    if ( ref $opt->{onclick} eq 'CODE' ) {
-        return &{ $opt->{onclick} };
+    if ( ref $OPT->{onclick} eq 'CODE' ) {
+        return &{ $OPT->{onclick} };
     }
-    return system $opt->{onclick};
+    return system $OPT->{onclick};
 }
 
 # ------------------------------------------------------------------------------
@@ -275,19 +273,7 @@ sub _icon_from_file
 sub _init_imap_data
 {
     my ($data) = @_;
-    my $ico = $data->{icon};
-    unless ($ico) {
-        my $uri  = URI->new( 'http://' . $data->{host} );
-        my $root = $PDS->get_root_domain( $uri->host );
-        if ( -f $IMAP_ICO_PATH . $root . '.png' ) {
-            $ico = $root . '.png';
-        }
-        else {
-            $data->{image} = $APP_ICO{imap};
-            return;
-        }
-    }
-    $data->{image}       = _icon_from_file( $IMAP_ICO_PATH . $ico );
+
     $data->{mail_unseen} = 0;
     $data->{mail_total}  = 0;
     $data->{mail_error}  = 0;
@@ -295,20 +281,35 @@ sub _init_imap_data
     $data->{reconnectafter} //= ~0 - 1;
     undef $data->{imap};
 
-    for ( @{ $data->{mailboxes} } ) {
-        push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ];
+    push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ]
+        for @{ $data->{mailboxes} };
+
+    my $ico = $data->{icon};
+    unless ($ico) {
+        my $uri  = URI->new( 'http://' . $data->{host} );
+        my $root = $PDS->get_root_domain( $uri->host );
+        if ( -e $IMAP_ICO_PATH . $root . '.png' ) {
+            $ico = $root . '.png';
+        }
+        else {
+            $data->{image} = $APP_ICO{imap};
+            return;
+        }
     }
+    $data->{image} = _icon_from_file( $IMAP_ICO_PATH . $ico );
+    return;
 }
 
 # ------------------------------------------------------------------------------
 sub _init_app_ico
 {
-    while ( my ( $k, $v ) = each %{ $opt->{icons} } ) {
+    while ( my ( $k, $v ) = each %{ $OPT->{icons} } ) {
         $APP_ICO_SRC{$k} = $v;
     }
     while ( my ( $k, $v ) = each %APP_ICO_SRC ) {
         $APP_ICO{$k} = _icon_from_file( $APP_ICO_PATH . $v );
     }
+    return;
 }
 
 # ------------------------------------------------------------------------------
@@ -320,8 +321,8 @@ sub _parse_config
     confess "Invalid config file \"$config\"\n"
         unless $cfg;
 
-    $cfg = _convert( $cfg, q{_} );   
-   
+    $cfg = _convert( $cfg, q{_} );
+
     my $cerr = _check_config($cfg);
     confess $cerr if $cerr;
     return $cfg;
@@ -386,8 +387,8 @@ sub _check_config
 
 # ------------------------------------------------------------------------------
 END {
-    if ( $opt && ref $opt->{imap} eq 'HASH' ) {
-        while ( my ( undef, $data ) = each %{ $opt->{imap} } ) {
+    if ( $OPT && ref $OPT->{imap} eq 'HASH' ) {
+        while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
             $data->{imap}->logout if $data->{imap};
             undef $data->{imap};
         }
@@ -395,14 +396,72 @@ END {
 }
 
 # ------------------------------------------------------------------------------
-
 __END__
 
 =pod
 
+=head1 NAME
+
+IMAP-tray
+
+=head1 DEPENDENCIES 
+
+=over
+
+=item L<utf8::all>
+
+=item L<Modern::Perl>
+
+=item L<Carp>
+
+=item L<Config::Find>
+
+=item L<Const::Fast>
+
+=item L<Domain::PublicSuffix>
+
+=item L<Encode>
+
+=item L<Encode::IMAPUTF7>
+
+=item L<English>
+
+=item L<File::Basename>
+
+=item L<Gtk3>
+
+=item L<Net::IMAP::Simple>
+
+=item L<Try::Tiny>
+
+=item L<URI>
+
+=back
+
 =head1 SYNOPSIS
 
 ./imap-tray.pl [config_file]
+
+=head1 USAGE
+
+./imap-tray.pl [config_file]
+
+=head1 LICENSE AND COPYRIGHT
+
+Coyright (C) 2016 Vsevolod Lutovinov.
+
+This program is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself. The full text of this license can be found in
+the LICENSE file included with this module.
+
+=head1 AUTHOR
+
+Contact the author at klopp@yandex.ru.
+
+=head1 SOURCE CODE
+
+Source code and issues can be found here:
+ <https://github.com/klopp/imap-tray>
 
 =cut
 
