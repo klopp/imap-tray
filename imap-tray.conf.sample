@@ -20,6 +20,7 @@
     {
         Yandex => 
         {
+            # Icon     => 'online',
             Active    => 1,
             Host      => 'imap.yandex.com:993',
             Login     => 'USER@yandex.ru',
@@ -38,6 +39,7 @@
 
         'Mail.RU' => 
         {
+            # Icon     => 'online',
             Active    => 1,
             Name      => 'Mail.RU',
             Host      => 'imap.mail.ru:993',
@@ -57,6 +59,7 @@
 
         Goolge => 
         {
+            # Icon     => 'online',
             Active    => 1,
             Name      => 'Google',
             Host      => 'imap.googlemail.com:993',

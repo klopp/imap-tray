@@ -13,16 +13,20 @@ use Encode qw/decode_utf8/;
 use Encode::IMAPUTF7;
 use English qw/-no_match_vars/;
 use File::Basename;
+use File::Temp qw/tempfile/;
 use Gtk3 qw/-init/;
+use LWP::Simple;
 use Net::IMAP::Simple;
 use Try::Tiny;
 use URI;
 
 # ------------------------------------------------------------------------------
-our $VERSION = 'v1.0.4';
+our $VERSION = 'v1.5';
 
 # ------------------------------------------------------------------------------
 my ( undef, $APP_DIR ) = fileparse($PROGRAM_NAME);
+
+const my $GET_FAVICON   => 'http://www.google.com/s2/favicons?domain=%s';
 const my $ICO_INACTIVE  => 0.01;
 const my $ICO_ERROR     => 10;
 const my $BUTTON_LEFT   => 1;
@@ -290,19 +294,38 @@ sub _init_imap_data
 
     push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ] for @{ $data->{mailboxes} };
 
-    my $ico = $data->{icon};
+    my $ico  = $data->{icon};
+    my $uri  = URI->new( 'http://' . $data->{host} );
+    my $root = $PDS->get_root_domain( $uri->host );
     if ( !$ico ) {
-        my $uri  = URI->new( 'http://' . $data->{host} );
-        my $root = $PDS->get_root_domain( $uri->host );
         if ( $root && -e $IMAP_ICO_PATH . $root . '.png' ) {
-            $ico = $root . '.png';
+            $ico = $IMAP_ICO_PATH . $root . '.png';
         }
         else {
             $data->{image} = $APP_ICO{imap};
             return;
         }
     }
-    $data->{image} = _icon_from_file( $IMAP_ICO_PATH . $ico );
+    elsif ( $ico eq 'online' ) {
+        my $icon = get( sprintf $GET_FAVICON, $uri->host );
+        $icon = get( sprintf $GET_FAVICON, $root ) unless $icon;
+        if ($icon) {
+            my ( $fh, $filename ) = tempfile( UNLINK => 1 );
+            if ( !$fh ) {
+                $data->{image} = $APP_ICO{imap};
+                return;
+            }
+            binmode $fh, ':bytes';
+            print {$fh} $icon;
+            close $fh;
+            $ico = $filename;
+        }
+        else {
+            $data->{image} = $APP_ICO{imap};
+            return;
+        }
+    }
+    $data->{image} = _icon_from_file( $ico );
     return;
 }
 
@@ -324,7 +347,7 @@ sub _parse_config
     my $config = $ARGV[0] ? $ARGV[0] : Config::Find->find;
     _confess( '%s', 'Can not detect config file location' ) unless $config;
     my $cfg = do($config);
-    _confess( '%s', "Invalid config file \"$config\"" )
+    _confess( 'Invalid config file "%s"', $config )
         unless $cfg;
 
     $cfg = _convert( $cfg, q{_} );
@@ -458,7 +481,11 @@ IMAP-Tray
 
 =item L<File::Basename>
 
+=item L<File::Temp>
+
 =item L<Gtk3>
+
+=item L<LWP::Simple>
 
 =item L<Net::IMAP::Simple>
 
