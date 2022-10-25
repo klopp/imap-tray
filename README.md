@@ -1,28 +1,115 @@
 # IMAP-tray
-Perl/Gtk IMAP checker.
+Perl/Gtk IMAP уведомлятор.
 
-Config file can be readed from script directory or from first command-line argument. Format is Perl-based (see imap-tray.conf.sample). Format of IMAP/opt entries described in [Net::IMAP::Simple](https://metacpan.org/pod/Net::IMAP::Simple#new) documentation (*new* arguments).
+Висит в трее и проверяет почту в указанных почтовых ящиках. При появлении новых писем меняет иконку и в тултипе показывает подробности. При клике по иконке запускает указанную почтовую программу (или делает то, что указано в конфиге).
 
-## No new messages icon and tooltip:
+Конфиг ищет в стандартных для *nix местах (см. [Config::Find](https://metacpan.org/pod/Config::Find)) или читает из первого аргумента командной строки:
 
-![No new messages icon and tooltip](http://ato.su/resizer/i/0/2/a232d35e.png)
+```bash
+    ./imap-tray.pl /home/user/imap-tray.conf
+```
 
-## New messages icon and tooltip:
+Формат конфига - перловый хэш:
 
-![New messages icon and tooltip](http://ato.su/resizer/i/2/0/4963746d.png)
+```perl
+{
+    Debug    => 1,
+    OnClick  => '/usr/bin/evolution',
+    Interval => 120,
+    #OnClick => sub
+    #{
+    #  print "Click\n";  
+    #},
+    Icons => {
+        New       => 'new.png',
+        Quit      => 'quit.png',
+        Imap      => 'imap.png',
+        Error     => 'error.png',
+        NoNew     => 'nonew.png',
+        ReConnect => 'reconnect.png',
+    },
+    IMAP =>
+    {
+        Yandex => 
+        {
+            Icon      => 'yandex.com.png',
+            Active    => 1,
+            Host      => 'imap.yandex.com:993',
+            Login     => 'USER@yandex.ru',
+            Password  => 'PASSWORD',
+            ReconnectAfter  => 128,
+            Detailed => 1, 
+            Opt =>
+            {
+                use_ssl     => 1,
+            },
+            Mailboxes =>
+            [
+                'INBOX', 'Работа',
+            ],
+        },
+        'Mail.RU' => 
+        {
+        # ...
+        },
+        Goolge => 
+        {
+        # ...
+        },
+    },
+}
+```
 
-## New messages icon and tooltip, with "detailed => 1":
+Имена параметров нечувствительны к регистру.
 
-![New detailed messages icon and tooltip](http://ato.su/resizer/i/f/b/6bd2dea3.png)
+### Debug => ?
 
-## Error icon and tooltip:
+Если не undef/0, то выводит в STDOUT отладочные сообщения.
 
-![Error icon and tooltip](http://ato.su/resizer/i/d/2/10180bd6.png)
+### OnClick => действие
 
-## Context menu, all servers checking is ON:
+Что делать по клике на иконку. Если это код, то он исполняется. Если нет - вызывается `system( действие )`.
 
-![Context menu, all servers checking is ON](http://ato.su/resizer/i/f/9/6c3db88e.png)
+### Interval => секунды
 
-## Context menu, Ato.SU and Google checking is OFF:
+Интервал меджу проверками почтовых ящиков. В данный момент один для всех хостов.
 
-![Context menu, Ato.SU and Google checking is OFF](http://ato.su/resizer/i/b/c/6ba082d4.png)
+### Icons => { список }
+
+Переопределение стандартных иконок. Файлы с иконками должны находиться в каталоге `i/` программы. Использовать на свой страх и риск, не рекомендуется.
+
+### IMAP => список
+
+Список почтовых серверов в формате
+
+```perl
+    Имя => { параметры }
+```
+
+#### Icon => file
+
+Имя файла с иконкой почтового сервиса. Файл должен находиться в каталоге `i/m/` программы. Если не задано, то используется одна из предопределённых иконок. Если же таковой не найдётся - иконка по умолчанию (`i/imap.png`).
+
+#### Active => ?
+
+Если undef/0, то хост исключается из проверки. После запуска программы состояние меняется кликом по соответствующему пункту всплывающего меню.
+
+#### Host, Login, Password, Mailboxes
+
+Очевидно.
+
+#### ReconnectAfter => попытки
+
+После *попытки* проверок почты соединение с хостом закрывается и открывается снова.
+
+#### Detailed => ?
+
+Если не undef/0, то во всплывающем тултипе выводится количество новых писем для каждого ящика из *Mailboxes* отдельно. Иначе выводится общее количество новых писем.
+
+#### Opt => { параметры }
+
+Дополнительные параметры для соединения с хостом. Полный список можно посмотреть в списке параметров конструктора [Net::IMAP::Simple](https://metacpan.org/pod/Net::IMAP::Simple#new). На практике обычно достаточно 
+
+```perl
+    use_ssl => 1
+```
