@@ -1,94 +1,76 @@
 {
-  Debug => 1,
+    Debug => 1,
+    OnClick => '/usr/bin/evolution',
+    #OnClick => sub
+    #{
+    #  print "Click\n";  
+    #},
+    Interval  => 120,
 
-  # left click action:
-  OnClick => '/usr/bin/thunderbird',
-
-#  OnClick => sub
-#  {
-#    print "Click!\n";  
-#  },
-
-
-  # tooltip bottom:
-  ShowHelp => "---\nRight-click: menu\nLeft-click: action",
-
-  # seconds:
-  Interval  => '10',
-
-  IconMail    => 'mail-default.png',
-  IconNoNew   => 'nonew.png',
-  IconNew     => 'new.png',
-  IconError   => 'error.png',
-  IconQuit    => 'quit.png',
-  IconReLogin => 'relogin.png',
-
-  IMAP =>
-  [
-    {
-      active    => 1,
-      icon      => 'yandex.com.png',
-      name      => 'Yandex',
-      host      => 'imap.yandex.com:993',
-      login     => 'xxx@yandex.ru',
-      password  => 'xyz',
-      
-      # relogin after N status() requests:
-      reloginafter  => 1024, 
-
-      # show mailboxes in tooltip:
-      detailed => 1,
-
-      opt =>
-      {
-        ssl_version => 'TLSv1',
-        use_ssl     => 1,
-      },
-      mailboxes =>
-      [
-        'INBOX',
-        'Хостинг',
-        'Работа',
-      ],
+    Icons => {
+        New       => 'new.png',
+        Quit      =>'quit.png',
+        Imap      => 'imap.png',
+        Error     => 'error.png',
+        NoNew     => 'nonew.png',
+        ReConnect => 'reconnect.png',
     },
 
+    IMAP =>
     {
-      active    => 1,
-      icon      => 'mail.ru.png',
-      name      => 'Mail.RU',
-      host      => 'imap.mail.ru:993',
-      login     => 'xxx@mail.ru',
-      password  => 'xyz',
-      reloginafter  => 1024, 
-      opt =>
-      {
-        ssl_version => 'TLSv1',
-        use_ssl     => 1,
-      },
-      mailboxes =>
-      [
-        'INBOX',
-      ],
-    },
+        Yandex => 
+        {
+            Active    => 1,
+            Host      => 'imap.yandex.com:993',
+            Login     => 'USER@yandex.ru',
+            Password  => 'PASSWORD',
+            ReconnectAfter  => 128,
+            Detailed => 1, 
+            Opt =>
+            {
+                use_ssl     => 1,
+            },
+            Mailboxes =>
+            [
+                'INBOX', 'Работа',
+            ],
+        },
 
-    {
-      active    => 1,
-      icon      => 'googlemail.com.png',
-      name      => 'Google',
-      host      => 'imap.googlemail.com:993',
-      login     => 'xxx@gmail.com',
-      password  => 'xyz',
-      reloginafter  => 1024, 
-      opt =>
-      {
-        ssl_version => 'TLSv1',
-        use_ssl     => 1,
-      },
-      mailboxes =>
-      [
-        'INBOX',
-      ],
-    },
+        'Mail.RU' => 
+        {
+            Active    => 1,
+            Name      => 'Mail.RU',
+            Host      => 'imap.mail.ru:993',
+            Login     => 'USER@mail.ru',
+            Password  => 'PASSWORD',
+            ReconnectAfter  => 128, 
+            Detailed => 1, 
+            Opt =>
+            {
+                use_ssl     => 1,
+            },
+            Mailboxes =>
+            [
+                'INBOX', 'Job',
+            ],
+        },
 
-  ],
+        Goolge => 
+        {
+            Active    => 1,
+            Name      => 'Google',
+            Host      => 'imap.googlemail.com:993',
+            Login     => 'USER@gmail.com',
+            Password => 'PASSWORD',
+            ReconnectAfter  => 128, 
+            Opt =>
+            {
+                use_ssl     => 1,
+            },
+            Mailboxes =>
+            [
+                'INBOX',
+            ],
+        },
+    },
 }
