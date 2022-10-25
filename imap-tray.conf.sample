@@ -5,7 +5,7 @@
     #{
     #  print "Click\n";  
     #},
-    Interval  => 120,
+    Interval  => 2,
 
     Icons => {
         New       => 'new.png',
@@ -27,6 +27,7 @@
             Password  => 'PASSWORD',
             ReconnectAfter  => 128,
             Detailed => 1, 
+            Interval  => 1,
             Opt =>
             {
                 use_ssl     => 1,
@@ -46,6 +47,7 @@
             Password  => 'PASSWORD',
             ReconnectAfter  => 128, 
             Detailed => 1, 
+            Interval  => 2,
             Opt =>
             {
                 use_ssl     => 1,
@@ -64,6 +66,7 @@
             Login     => 'USER@gmail.com',
             Password => 'PASSWORD',
             ReconnectAfter  => 128, 
+            Interval  => 3,
             Opt =>
             {
                 use_ssl     => 1,
