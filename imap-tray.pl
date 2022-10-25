@@ -15,7 +15,8 @@ use Domain::PublicSuffix;
 use Encode qw/decode_utf8/;
 use English qw/-no_match_vars/;
 use File::Basename;
-use Gtk3 qw/-init/;
+use Gtk3 -init;
+use Try::Tiny;
 use URI;
 
 # ------------------------------------------------------------------------------
@@ -24,30 +25,115 @@ use DDP;
 
 # ------------------------------------------------------------------------------
 my ( undef, $APP_DIR ) = fileparse($PROGRAM_NAME);
-const my $APP_ICO_PATH  => "$APP_DIR/i/";
-const my $IMAP_ICO_PATH => "$APP_DIR/i/m/";
+const my $APP_ICO_PATH  => $APP_DIR . 'i/';
+const my $IMAP_ICO_PATH => $APP_DIR . 'i/m/';
 my %APP_ICO_SRC = (
-    new     => 'new.png',
-    nonew   => 'nonew.png',
-    error   => 'error.png',
-    relogin => 'relogin.png',
-    quit    => 'quit.png',
-    imap    => 'imap.png',
+    new       => 'new.png',
+    nonew     => 'nonew.png',
+    error     => 'error.png',
+    reconnect => 'reconnect.png',
+    quit      => 'quit.png',
+    imap      => 'imap.png',
 );
 my %APP_ICO;
 my $opt = _parse_config();
 _init_app_ico();
 
 my $PDS = Domain::PublicSuffix->new();
-while ( my ( $k, $v ) = each %{ $opt->{imap} } ) {
-    _init_imap_ico( $k, $v );
+while ( my ( undef, $v ) = each %{ $opt->{imap} } ) {
+    _init_imap_data($v);
 }
-p $opt->{imap};
+
+#exit;
+#p $opt->{imap};
+
+my $trayicon = _create_tray_icon();
+Gtk3->main;
 
 # ------------------------------------------------------------------------------
-sub _init_imap_ico
+sub _create_tray_icon
 {
-    my ( $imap, $data ) = @_;
+    my $ti = Gtk3::StatusIcon->new;
+    $ti->set_from_pixbuf( $APP_ICO{nonew}->get_pixbuf );
+
+    $ti->signal_connect(
+
+        button_press_event => sub {
+            my ( undef, $event ) = @_;
+            if ( $event->button == 3 ) {
+                my ( $menu, $item ) = ( Gtk3::Menu->new );
+
+=pod
+            for my $imap ( @{ $cfg->{imap} } ) {
+
+                my $label = $imap->{name};
+                $label .= " ($imap->{new})" if $imap->{new};
+                $item = Gtk3::ImageMenuItem->new($label);
+                my $dest = $imap->{image}->get_pixbuf->copy;
+                if ( !$imap->{active} ) {
+                    $dest->saturate_and_pixelate( $dest, 0.01, 1 );
+                }
+                elsif ( $imap->{error} ) {
+                    $dest->saturate_and_pixelate( $dest, 10, 1 );
+                }
+
+                my $image = Gtk3::Image->new_from_pixbuf($dest);
+                $item->set_image($image);
+                $item->signal_connect( activate => sub { $imap->{active} = $imap->{active} ? 0 : 1 } );
+                $item->show;
+                $menu->append($item);
+            }
+=cut
+
+                $item = Gtk3::SeparatorMenuItem->new;
+                $item->show;
+                $menu->append($item);
+
+                $item = Gtk3::ImageMenuItem->new('Reconnect');
+                $item->set_image( $APP_ICO{reconnect} );
+                $item->signal_connect(
+                    activate => sub {
+                        while ( my ( undef, $data ) = each %{ $opt->{imap} } ) {
+                            $data->{mail_check} = $data->{reconnectafter} + 1;
+                        }
+                        alarm 1;
+                    }
+                );
+                $item->show;
+                $menu->append($item);
+
+                $item = Gtk3::ImageMenuItem->new('Quit');
+                $item->set_image( $APP_ICO{quit} );
+                $item->signal_connect( activate => sub { Gtk3->main_quit } );
+                $item->show;
+                $menu->append($item);
+
+                $menu->show_all;
+                $menu->popup( undef, undef, undef, undef, $event->button, $event->time );
+            }
+            elsif ( $event->button == 1 ) {
+                _on_click();
+            }
+            1;
+        }
+
+    );
+    return $ti;
+}
+
+# ------------------------------------------------------------------------------
+sub _on_click
+{
+    if ( ref $opt->{onclick} eq 'CODE' ) {
+        return &$opt->{onclick};
+    }
+    return system $opt->{onclick};
+}
+
+# ------------------------------------------------------------------------------
+sub _init_imap_data
+{
+    my ($data) = @_;
     my $ico = $data->{icon};
     unless ($ico) {
         my $uri  = URI->new( 'http://' . $data->{host} );
@@ -60,7 +146,11 @@ sub _init_imap_ico
             return;
         }
     }
-    $data->{image} = Gtk3::Image->new_from_file( $IMAP_ICO_PATH . $ico );
+    $data->{image}       = Gtk3::Image->new_from_file( $IMAP_ICO_PATH . $ico );
+    $data->{mail_check}  = 0;
+    $data->{mail_unread} = 0;
+    $data->{mail_total}  = 0;
+    $data->{mail_active} = $data->{active} // 0;
 }
 
 # ------------------------------------------------------------------------------
@@ -70,7 +160,13 @@ sub _init_app_ico
         $APP_ICO_SRC{$k} = $v;
     }
     while ( my ( $k, $v ) = each %APP_ICO_SRC ) {
-        $APP_ICO{$k} = Gtk3::Image->new_from_file( $APP_ICO_PATH . $v );
+        try {
+            my $pb = Gtk3::Gdk::Pixbuf->new_from_file( $APP_ICO_PATH . $v );
+            $APP_ICO{$k} = Gtk3::Image->new_from_pixbuf($pb);
+        }
+        catch {
+            confess sprintf "Can not create icon from file \"%s%s\:\n%s", $APP_ICO_PATH, $v, $ERRNO;
+        }
     }
 }
 
@@ -143,6 +239,16 @@ sub _check_config
         }
     }
     return;
+}
+
+# ------------------------------------------------------------------------------
+END {
+    if ( $opt && ref $opt->{imap} eq 'HASH' ) {
+        while ( my ( undef, $data ) = each %{ $opt->{imap} } ) {
+            $data->{imap}->logout if $data->{imap};
+            undef $data->{imap};
+        }
+    }
 }
 
 =pod
