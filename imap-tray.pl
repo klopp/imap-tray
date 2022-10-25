@@ -48,15 +48,14 @@ my %APP_ICO;
 my $OPT = _parse_config();
 _init_app_ico();
 
-# convert IMAP hash to ordered hash:
+# Convert IMAP hash to ordered hash.
+# Use Array::OrdHash, not Hash::Ordered, because
+# 'each' and '->{}' syntax is identical to native hashes.
 my $oh = Array::OrdHash->new;
-for ( sort keys %{ $OPT->{imap} } ) {
-    $oh->{$_} = $OPT->{imap}->{$_};
-}
+$oh->{$_} = $OPT->{imap}->{$_} for sort keys %{ $OPT->{imap} };
 $OPT->{imap} = $oh;
 
 my $PDS = Domain::PublicSuffix->new();
-
 while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
     _init_imap_data($data);
 }
