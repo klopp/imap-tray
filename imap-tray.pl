@@ -77,7 +77,7 @@ sub _mail_loop
             if ( $data->{detailed} ) {
                 for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
                     push @tooltip,
-                        $name . q{/} . $data->{mailboxes}->[$i] . ' :: ' . $data->{mail_boxes}->[$i]->[1] . ' new';
+                        $name . q{[} . $data->{mailboxes}->[$i] . '] :: ' . $data->{mail_boxes}->[$i]->[1] . ' new';
                 }
             }
             else {
@@ -125,7 +125,7 @@ sub _check_one_imap
         $unseen += 0;
         $data->{mail_unseen} += $unseen;
         $data->{mail_boxes}->[$i]->[1] = $unseen;
-        say sprintf '%s/%s :: OK, unseen: %u', $name, $data->{mailboxes}->[$i], $unseen
+        say sprintf '%s[%s] :: OK, unseen: %u', $name, $data->{mailboxes}->[$i], $unseen
             if $opt->{debug};
     }
 
