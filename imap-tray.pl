@@ -23,6 +23,7 @@ our $VERSION = 'v1.0.4';
 
 # ------------------------------------------------------------------------------
 my ( undef, $APP_DIR ) = fileparse($PROGRAM_NAME);
+const my $SEC_IN_MIN    => 60;
 const my $APP_ICO_PATH  => $APP_DIR . 'i/';
 const my $IMAP_ICO_PATH => $APP_DIR . 'i/m/';
 my %APP_ICO_SRC = (
@@ -38,8 +39,8 @@ my $OPT = _parse_config();
 _init_app_ico();
 
 my $PDS = Domain::PublicSuffix->new();
-while ( my ( undef, $v ) = each %{ $OPT->{imap} } ) {
-    _init_imap_data($v);
+while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
+    _init_imap_data($data);
 }
 
 my $TRAYICON = _create_tray_icon();
@@ -59,10 +60,13 @@ sub _mail_loop
     my ( $errors, $unseen, @tooltip ) = ( 0, 0 );
     while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
         next unless $data->{mail_active};
+        my $now = time;
+        next if $data->{mail_next} > $now;
 
         my $error;
-        $error = _imap_login( $name, $data )     unless $data->{imap};
-        $error = _check_one_imap( $name, $data ) unless $error;
+        $error             = _imap_login( $name, $data )     unless $data->{imap};
+        $error             = _check_one_imap( $name, $data ) unless $error;
+        $data->{mail_next} = time + $data->{interval} * $SEC_IN_MIN;
 
         if ($error) {
             push @tooltip, $name . ': ' . $error;
@@ -93,7 +97,7 @@ sub _mail_loop
     $TRAYICON->set_from_pixbuf( $APP_ICO{$ico}->get_pixbuf );
     $TRAYICON->set_tooltip_text( join "\n", @tooltip );
 
-    alarm $OPT->{interval};
+    alarm $SEC_IN_MIN;
     $locked = 0;
     return;
 }
@@ -274,6 +278,8 @@ sub _init_imap_data
 {
     my ($data) = @_;
 
+    $data->{interval}    = $OPT->{interval} unless $data->{interval};
+    $data->{mail_next}   = time;
     $data->{mail_unseen} = 0;
     $data->{mail_total}  = 0;
     $data->{mail_error}  = 0;
@@ -281,8 +287,7 @@ sub _init_imap_data
     $data->{reconnectafter} //= ~0 - 1;
     undef $data->{imap};
 
-    push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ]
-        for @{ $data->{mailboxes} };
+    push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ] for @{ $data->{mailboxes} };
 
     my $ico = $data->{icon};
     unless ($ico) {
