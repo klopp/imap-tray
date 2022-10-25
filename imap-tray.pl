@@ -112,8 +112,7 @@ sub _check_one_imap
     $data->{mail_unseen} = 0;
     ++$data->{mail_count};
 
-    say sprintf '%s :: checking mail, attempt %u from %u...', $name, $data->{mail_count}, $data->{reconnectafter}
-        if $OPT->{debug};
+    _dbg( '%s :: checking mail, attempt %u from %u...', $name, $data->{mail_count}, $data->{reconnectafter} );
 
     for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
 
@@ -126,19 +125,16 @@ sub _check_one_imap
         $unseen += 0;
         $data->{mail_unseen} += $unseen;
         $data->{mail_boxes}->[$i]->[1] = $unseen;
-        say sprintf '%s[%s] :: OK, unseen: %u', $name, $data->{mailboxes}->[$i], $unseen
-            if $OPT->{debug};
+        _dbg( '%s[%s] :: OK, unseen: %u', $name, $data->{mailboxes}->[$i], $unseen );
     }
 
     if ($error) {
         $error =~ s/^\s+|\s+$//gsm;
-        say sprintf '%s :: error %s', $name, $error
-            if $OPT->{debug};
+        _dbg( '%s :: error %s', $name, $error );
     }
     else {
         if ( $data->{mail_count} >= $data->{reconnectafter} ) {
-            say sprintf '%s :: max attempts (%u), logout', $name, $data->{mail_count}
-                if $OPT->{debug};
+            _dbg( '%s :: max attempts (%u), logout', $name, $data->{mail_count} );
             $data->{imap}->logout;
             undef $data->{imap};
         }
@@ -161,15 +157,15 @@ sub _imap_login
         = Net::IMAP::Simple->new( $data->{host}, %{ $data->{opt} } );
     if ( !$imap ) {
         $error = sprintf '%s :: unable to connect (%s)', $name, $Net::IMAP::Simple::errstr;
-        say $error if $OPT->{debug};
+        dbg( '%s', $error );
     }
     elsif ( !$imap->login( $data->{login}, $data->{password} ) ) {
         $error = sprintf '%s :: unable to login (%s)', $name, $imap->errstr;
-        say $error if $OPT->{debug};
+        _dbg( '%s', $error );
         undef $imap;
     }
     else {
-        say sprintf '%s :: login OK', $name if $OPT->{debug};
+        _dbg( '%s :: login OK', $name );
         $data->{imap} = $imap;
     }
     return $error;
@@ -202,7 +198,7 @@ sub _create_tray_icon
                     $item->signal_connect(
                         activate => sub {
                             $data->{mail_active} ^= 1;
-                            unless ( $data->{active} ) {
+                            if ( !$data->{active} ) {
                                 $data->{imap}->logout if $data->{imap};
                                 undef $data->{imap};
                             }
@@ -268,7 +264,7 @@ sub _icon_from_file
         $ico = Gtk3::Image->new_from_pixbuf($pb);
     }
     catch {
-        confess sprintf "Can not create icon from file \"%s\:\n %s", $file, $ERRNO;
+        _confess( "Can not create icon from file \"%s\":\n %s", $file, $ERRNO );
     };
     return $ico;
 }
@@ -290,7 +286,7 @@ sub _init_imap_data
     push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ] for @{ $data->{mailboxes} };
 
     my $ico = $data->{icon};
-    unless ($ico) {
+    if ( !$ico ) {
         my $uri  = URI->new( 'http://' . $data->{host} );
         my $root = $PDS->get_root_domain( $uri->host );
         if ( -e $IMAP_ICO_PATH . $root . '.png' ) {
@@ -321,15 +317,15 @@ sub _init_app_ico
 sub _parse_config
 {
     my $config = $ARGV[0] ? $ARGV[0] : Config::Find->find;
-    confess "Can not detect config file location\n" unless $config;
+    _confess( '%s', 'Can not detect config file location' ) unless $config;
     my $cfg = do($config);
-    confess "Invalid config file \"$config\"\n"
+    _confess( '%s', "Invalid config file \"$config\"" )
         unless $cfg;
 
     $cfg = _convert( $cfg, q{_} );
 
     my $cerr = _check_config($cfg);
-    confess $cerr if $cerr;
+    _confess( '%s', $cerr ) if $cerr;
     return $cfg;
 }
 
@@ -391,6 +387,30 @@ sub _check_config
 }
 
 # ------------------------------------------------------------------------------
+sub _now
+{
+    my ( $sec, $min, $hour, $mday, $mon, $year ) = localtime time;
+    return sprintf '[%04u-%02u-%02u %02u:%02u:%02u]', $year + 1900, $mon + 1, $mday, $hour, $min, $sec;
+}
+
+# ------------------------------------------------------------------------------
+sub _dbg
+{
+    my ( $fmt, @data ) = @_;
+    if ( $OPT->{debug} ) {
+        say sprintf '%s %s', _now(), sprintf $fmt, @data;
+    }
+    return;
+}
+
+# ------------------------------------------------------------------------------
+sub _confess
+{
+    my ( $fmt, @data ) = @_;
+    return confess sprintf "%s %s\n ", _now(), sprintf $fmt, @data;
+}
+
+# ------------------------------------------------------------------------------
 END {
     if ( $OPT && ref $OPT->{imap} eq 'HASH' ) {
         while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
@@ -407,7 +427,7 @@ __END__
 
 =head1 NAME
 
-IMAP-tray
+IMAP-Tray
 
 =head1 DEPENDENCIES 
 
