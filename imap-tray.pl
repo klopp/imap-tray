@@ -228,6 +228,7 @@ sub _create_tray_icon
                         while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
                             $data->{imap}->logout if $data->{imap};
                             undef $data->{imap};
+                            $data->{mail_next} = time;
                         }
                         alarm 1;
                     }
