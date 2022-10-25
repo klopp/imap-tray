@@ -5,6 +5,7 @@ use open qw/:std :utf8/;
 use Modern::Perl;
 
 # ------------------------------------------------------------------------------
+use Array::OrdHash;
 use Carp qw/confess/;
 use Config::Find;
 use Const::Fast;
@@ -47,8 +48,16 @@ my %APP_ICO;
 my $OPT = _parse_config();
 _init_app_ico();
 
+# convert IMAP hash to ordered hash:
+my $oh = Array::OrdHash->new;
+for ( sort keys %{ $OPT->{imap} } ) {
+    $oh->{$_} = $OPT->{imap}->{$_};
+}
+$OPT->{imap} = $oh;
+
 my $PDS = Domain::PublicSuffix->new();
-while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
+
+while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
     _init_imap_data($data);
 }
 
@@ -67,20 +76,24 @@ sub _mail_loop
     ++$locked;
 
     my ( $errors, $unseen, @tooltip ) = ( 0, 0 );
+
     while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
         next unless $data->{mail_active};
-        my $now = time;
-        next if $data->{mail_next} > $now;
+        my ( $now, $error ) = (time);
 
-        my $error;
-        $data->{mail_error} = 0;
-        $error              = _imap_login( $name, $data )     unless $data->{imap};
-        $error              = _check_one_imap( $name, $data ) unless $error;
-        $data->{mail_next}  = time + $data->{interval} * $SEC_IN_MIN;
+        if ( $data->{mail_next} <= $now ) {
+            undef $data->{mail_error};
+            $error             = _imap_login( $name, $data )     unless $data->{imap};
+            $error             = _check_one_imap( $name, $data ) unless $error;
+            $data->{mail_next} = time + $data->{interval} * $SEC_IN_MIN;
+        }
+        else {
+            $error = $data->{mail_error};
+        }
 
         if ($error) {
             push @tooltip, $name . ' :: ' . $error;
-            $data->{mail_error} = 1;
+            $data->{mail_error} = $error;
             ++$errors;
         }
         else {
@@ -288,10 +301,10 @@ sub _init_imap_data
     $data->{mail_next}   = time;
     $data->{mail_unseen} = 0;
     $data->{mail_total}  = 0;
-    $data->{mail_error}  = 0;
     $data->{mail_active} = $data->{active} // 0;
     $data->{reconnectafter} //= $INT_MAX;
     undef $data->{imap};
+    undef $data->{mail_error};
 
     push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ] for @{ $data->{mailboxes} };
 
@@ -406,11 +419,10 @@ sub _check_config
             if ref $data->{mailboxes} ne 'ARRAY'
             || $#{ $data->{mailboxes} } < 0;
 
-        if ( defined $data->{reconnectafter}
-            && $data->{reconnectafter} !~ /^\d+$/sm )
-        {
-            return "Invalid \"ReconnectAfter\" value in \"IMAP/$name\"";
-        }
+        @{ $data->{mailboxes} } = sort @{ $data->{mailboxes} };
+
+        return "Invalid \"ReconnectAfter\" value in \"IMAP/$name\""
+            if $data->{reconnectafter} && $data->{reconnectafter} !~ /^\d+$/sm;
     }
     return;
 }
@@ -465,6 +477,8 @@ IMAP-Tray
 =item L<utf8::all>
 
 =item L<Modern::Perl>
+
+=item L<Array::OrdHash>
 
 =item L<Carp>
 
