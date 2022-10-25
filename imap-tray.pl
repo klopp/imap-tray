@@ -289,7 +289,7 @@ sub _init_imap_data
     if ( !$ico ) {
         my $uri  = URI->new( 'http://' . $data->{host} );
         my $root = $PDS->get_root_domain( $uri->host );
-        if ( -e $IMAP_ICO_PATH . $root . '.png' ) {
+        if ( $root && -e $IMAP_ICO_PATH . $root . '.png' ) {
             $ico = $root . '.png';
         }
         else {
@@ -369,7 +369,7 @@ sub _check_config
 
     while ( my ( $name, $data ) = each %{ $cfg->{imap} } ) {
 
-        return 'No "host" key in "IMAP" list'          unless $data->{host};
+        return "No \"host\" key in \"IMAP/$name\""     unless $data->{host};
         return "No \"password\" key in \"IMAP/$name\"" unless $data->{password};
         return "No \"login\" key in \"IMAP/$name\""    unless $data->{login};
 
