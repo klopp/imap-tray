@@ -79,9 +79,9 @@ sub _mail_loop
         $data->{mail_next}  = time + $data->{interval} * $SEC_IN_MIN;
 
         if ($error) {
-            push @tooltip, $name . ': ' . $error;
+            push @tooltip, $name . ' :: ' . $error;
             $data->{mail_error} = 1;
-            $errors++;
+            ++$errors;
         }
         else {
             if ( $data->{detailed} ) {
@@ -326,7 +326,7 @@ sub _init_imap_data
             return;
         }
     }
-    $data->{image} = _icon_from_file( $ico );
+    $data->{image} = _icon_from_file($ico);
     return;
 }
 
