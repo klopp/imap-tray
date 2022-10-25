@@ -23,6 +23,11 @@ our $VERSION = 'v1.0.4';
 
 # ------------------------------------------------------------------------------
 my ( undef, $APP_DIR ) = fileparse($PROGRAM_NAME);
+const my $ICO_INACTIVE  => 0.01;
+const my $ICO_ERROR     => 10;
+const my $BUTTON_LEFT   => 1;
+const my $BUTTON_RIGHT  => 3;
+const my $INT_MAX       => ~0;
 const my $SEC_IN_MIN    => 60;
 const my $APP_ICO_PATH  => $APP_DIR . 'i/';
 const my $IMAP_ICO_PATH => $APP_DIR . 'i/m/';
@@ -64,9 +69,10 @@ sub _mail_loop
         next if $data->{mail_next} > $now;
 
         my $error;
-        $error             = _imap_login( $name, $data )     unless $data->{imap};
-        $error             = _check_one_imap( $name, $data ) unless $error;
-        $data->{mail_next} = time + $data->{interval} * $SEC_IN_MIN;
+        $data->{mail_error} = 0;
+        $error              = _imap_login( $name, $data )     unless $data->{imap};
+        $error              = _check_one_imap( $name, $data ) unless $error;
+        $data->{mail_next}  = time + $data->{interval} * $SEC_IN_MIN;
 
         if ($error) {
             push @tooltip, $name . ': ' . $error;
@@ -181,17 +187,16 @@ sub _create_tray_icon
 
         button_press_event => sub {
             my ( undef, $event ) = @_;
-            if ( $event->button == 3 ) {
+            if ( $event->button == $BUTTON_RIGHT ) {
                 my ( $menu, $item ) = ( Gtk3::Menu->new );
-
                 while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
                     $item = Gtk3::ImageMenuItem->new($name);
                     my $dest = $data->{image}->get_pixbuf->copy;
                     if ( !$data->{mail_active} ) {
-                        $dest->saturate_and_pixelate( $dest, 0.01, 1 );
+                        $dest->saturate_and_pixelate( $dest, $ICO_INACTIVE, 1 );
                     }
                     elsif ( $data->{mail_error} ) {
-                        $dest->saturate_and_pixelate( $dest, 10, 1 );
+                        $dest->saturate_and_pixelate( $dest, $ICO_ERROR, 1 );
                     }
                     my $image = Gtk3::Image->new_from_pixbuf($dest);
                     $item->set_image($image);
@@ -235,7 +240,7 @@ sub _create_tray_icon
                 $menu->show_all;
                 $menu->popup( undef, undef, undef, undef, $event->button, $event->time );
             }
-            elsif ( $event->button == 1 ) {
+            elsif ( $event->button == $BUTTON_LEFT ) {
                 _on_click();
             }
             1;
@@ -280,7 +285,7 @@ sub _init_imap_data
     $data->{mail_total}  = 0;
     $data->{mail_error}  = 0;
     $data->{mail_active} = $data->{active} // 0;
-    $data->{reconnectafter} //= ~0 - 1;
+    $data->{reconnectafter} //= $INT_MAX;
     undef $data->{imap};
 
     push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ] for @{ $data->{mailboxes} };
