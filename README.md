@@ -15,7 +15,7 @@ Perl/Gtk IMAP уведомлятор.
 {
     Debug    => 1,
     OnClick  => '/usr/bin/evolution',
-    Interval => 120,
+    Interval => 2,
     #OnClick => sub
     #{
     #  print "Click\n";  
