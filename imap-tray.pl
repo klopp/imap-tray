@@ -5,9 +5,11 @@ use open qw/:std :utf8/;
 use Modern::Perl;
 
 # ------------------------------------------------------------------------------
+use lib q{.};
 use Array::OrdHash;
 use Carp qw/confess/;
 use Config::Find;
+use Config::Subtree qw/parse_file/;
 use Const::Fast;
 use Domain::PublicSuffix;
 use Encode qw/decode_utf8/;
@@ -45,7 +47,7 @@ my %APP_ICO_SRC = (
     imap      => 'imap.png',
 );
 my %APP_ICO;
-my $OPT = _parse_config();
+my $OPT = _get_config();
 _init_app_ico();
 
 # Convert IMAP hash to ordered hash.
@@ -338,6 +340,9 @@ sub _init_imap_data
             return;
         }
     }
+    else {
+        $ico = $IMAP_ICO_PATH . $ico;
+    }
     $data->{image} = _icon_from_file($ico);
     return;
 }
@@ -355,15 +360,21 @@ sub _init_app_ico
 }
 
 # ------------------------------------------------------------------------------
-sub _parse_config
+sub _get_config
 {
     my $config = $ARGV[0] ? $ARGV[0] : Config::Find->find;
     _confess( '%s', 'Can not detect config file location' ) unless $config;
+
     my $cfg = do($config);
     _confess( 'Invalid config file "%s"', $config )
         unless $cfg;
 
+#    my $cfg = parse_file( $config, encoding => 'utf8', multi => ['Mailbox'] );
+#    my $cfg = parse_file( $config, encoding => 'utf8' );
     $cfg = _convert( $cfg, q{_} );
+#use DDP;
+#    p $cfg;
+#exit;
 
     my $cerr = _check_config($cfg);
     _confess( '%s', $cerr ) if $cerr;
@@ -392,6 +403,7 @@ sub _convert
     }
     else {
         $dest = decode_utf8($src);
+#        $dest = $src;
     }
     return $dest;
 }
