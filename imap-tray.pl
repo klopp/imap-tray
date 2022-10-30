@@ -9,7 +9,6 @@ use lib q{.};
 use Array::OrdHash;
 use Carp qw/confess/;
 use Config::Find;
-use Config::Subtree qw/parse_file/;
 use Const::Fast;
 use Domain::PublicSuffix;
 use Encode qw/decode_utf8/;
