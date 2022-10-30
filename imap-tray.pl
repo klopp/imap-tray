@@ -44,27 +44,37 @@ my %APP_ICO_SRC = (
     quit      => 'quit.png',
     imap      => 'imap.png',
 );
-my %APP_ICO;
-my $OPT = _get_config();
-_init_app_ico();
-
-# Convert IMAP hash to ordered hash.
-# Use Array::OrdHash, not Hash::Ordered, because
-# 'each' and '->{}' syntax is identical to native hashes.
-my $oh = Array::OrdHash->new;
-$oh->{$_} = $OPT->{imap}->{$_} for sort keys %{ $OPT->{imap} };
-$OPT->{imap} = $oh;
-
+my ( $TRAYICON, $OPT, %APP_ICO );
 my $PDS = Domain::PublicSuffix->new();
-while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
-    _init_imap_data($data);
-}
-
-my $TRAYICON = _create_tray_icon();
+_app_init();
 local $SIG{ALRM} = \&_mail_loop;
+local $SIG{HUP}  = sub { _disconnect_all(); _app_init(); alarm 1; };
 alarm 1;
 
 Gtk3->main;
+
+# ------------------------------------------------------------------------------
+sub _app_init
+{
+    undef $OPT;
+    undef $TRAYICON;
+    undef %APP_ICO;
+
+    $OPT = _get_config();
+    _init_app_ico();
+
+    # Convert IMAP hash to ordered hash.
+    # Use Array::OrdHash, not Hash::Ordered, because
+    # 'each' and '->{}' syntax is identical to native hashes.
+    my $oh = Array::OrdHash->new;
+    $oh->{$_} = $OPT->{imap}->{$_} for sort keys %{ $OPT->{imap} };
+    $OPT->{imap} = $oh;
+
+    while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
+        _init_imap_data($data);
+    }
+    $TRAYICON = _create_tray_icon();
+}
 
 # ------------------------------------------------------------------------------
 sub _mail_loop
@@ -237,11 +247,19 @@ sub _create_tray_icon
                 $item->set_image( $APP_ICO{reconnect} );
                 $item->signal_connect(
                     activate => sub {
-                        while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
-                            $data->{imap}->logout if $data->{imap};
-                            undef $data->{imap};
-                            $data->{mail_next} = time;
-                        }
+                        _disconnect_all();
+                        alarm 1;
+                    }
+                );
+                $item->show;
+                $menu->append($item);
+
+                $item = Gtk3::ImageMenuItem->new('Reload');
+                $item->set_image( $APP_ICO{reload} );
+                $item->signal_connect(
+                    activate => sub {
+                        _disconnect_all();
+                        _app_init();
                         alarm 1;
                     }
                 );
@@ -462,13 +480,19 @@ sub _confess
 }
 
 # ------------------------------------------------------------------------------
-END {
+sub _disconnect_all()
+{
     if ( $OPT && ref $OPT->{imap} eq 'HASH' ) {
         while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
             $data->{imap}->logout if $data->{imap};
             undef $data->{imap};
         }
     }
+}
+
+# ------------------------------------------------------------------------------
+END {
+    _disconnect_all();
 }
 
 # ------------------------------------------------------------------------------
