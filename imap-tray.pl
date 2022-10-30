@@ -36,11 +36,12 @@ const my $INT_MAX       => ~0;
 const my $SEC_IN_MIN    => 60;
 const my $APP_ICO_PATH  => $APP_DIR . 'i/';
 const my $IMAP_ICO_PATH => $APP_DIR . 'i/m/';
-my %APP_ICO_SRC = (
+const my %APP_ICO_SRC   => (
     new       => 'new.png',
     nonew     => 'nonew.png',
     error     => 'error.png',
     reconnect => 'reconnect.png',
+    reload    => 'reload.png',
     quit      => 'quit.png',
     imap      => 'imap.png',
 );
@@ -48,10 +49,18 @@ my ( $TRAYICON, $OPT, %APP_ICO );
 my $PDS = Domain::PublicSuffix->new();
 _app_init();
 local $SIG{ALRM} = \&_mail_loop;
-local $SIG{HUP}  = sub { _disconnect_all(); _app_init(); alarm 1; };
+local $SIG{HUP}  = \&_app_reload;
 alarm 1;
 
 Gtk3->main;
+
+# ------------------------------------------------------------------------------
+sub _app_reload
+{
+    _disconnect_all();
+    _app_init();
+    alarm 1;
+}
 
 # ------------------------------------------------------------------------------
 sub _app_init
@@ -256,13 +265,7 @@ sub _create_tray_icon
 
                 $item = Gtk3::ImageMenuItem->new('Reload');
                 $item->set_image( $APP_ICO{reload} );
-                $item->signal_connect(
-                    activate => sub {
-                        _disconnect_all();
-                        _app_init();
-                        alarm 1;
-                    }
-                );
+                $item->signal_connect( activate => sub { _app_reload(); } );
                 $item->show;
                 $menu->append($item);
 
@@ -366,11 +369,9 @@ sub _init_imap_data
 # ------------------------------------------------------------------------------
 sub _init_app_ico
 {
-    while ( my ( $k, $v ) = each %{ $OPT->{icons} } ) {
-        $APP_ICO_SRC{$k} = $v;
-    }
     while ( my ( $k, $v ) = each %APP_ICO_SRC ) {
-        $APP_ICO{$k} = _icon_from_file( $APP_ICO_PATH . $v );
+        $APP_ICO{$k}
+            = _icon_from_file( $APP_ICO_PATH . ( defined $OPT->{icons}->{$k} ? $OPT->{icons}->{$k} : $v ) );
     }
     return;
 }
