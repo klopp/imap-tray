@@ -11,7 +11,6 @@ use Carp qw/confess/;
 use Config::Find;
 use Const::Fast;
 use Domain::PublicSuffix;
-use Encode qw/decode_utf8/;
 use Encode::IMAPUTF7;
 use English qw/-no_match_vars/;
 use File::Basename;
@@ -364,16 +363,18 @@ sub _get_config
     my $config = $ARGV[0] ? $ARGV[0] : Config::Find->find;
     _confess( '%s', 'Can not detect config file location' ) unless $config;
 
-    my $cfg = do($config);
-    _confess( 'Invalid config file "%s"', $config )
-        unless $cfg;
+    _confess( 'Can not open file "%s": %s', $config, $ERRNO )
+        unless open( my $fh, '<', $config );
 
-#    my $cfg = parse_file( $config, encoding => 'utf8', multi => ['Mailbox'] );
-#    my $cfg = parse_file( $config, encoding => 'utf8' );
+    local $INPUT_RECORD_SEPARATOR = undef;
+    my $cstring = <$fh>;
+    close $fh;
+
+    my $cfg;
+    eval "\$cfg = $cstring;";
+    _confess( 'Invalid config file "%s" (%s)', $config, $EVAL_ERROR )
+        unless $cfg;
     $cfg = _convert( $cfg, q{_} );
-#use DDP;
-#    p $cfg;
-#exit;
 
     my $cerr = _check_config($cfg);
     _confess( '%s', $cerr ) if $cerr;
@@ -401,8 +402,7 @@ sub _convert
             keys %{$src};
     }
     else {
-        $dest = decode_utf8($src);
-#        $dest = $src;
+        $dest = $src;
     }
     return $dest;
 }
