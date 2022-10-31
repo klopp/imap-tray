@@ -7,7 +7,7 @@ use Modern::Perl;
 # ------------------------------------------------------------------------------
 use lib q{.};
 use Array::OrdHash;
-use Carp qw/confess/;
+use Carp qw/confess carp/;
 use Config::Find;
 use Const::Fast;
 use Domain::PublicSuffix;
@@ -394,8 +394,7 @@ sub _get_config
     my $cstring = <$fh>;
     close $fh;
 
-    my $cfg;
-    eval "\$cfg = $cstring;";
+    my $cfg = eval $cstring;
     return _confess( 'Invalid config file "%s" (%s)', $config, $EVAL_ERROR )
         unless $cfg;
     $cfg = _convert( $cfg, q{_} );
@@ -474,18 +473,18 @@ sub _dbg
     my ( $fmt, @data ) = @_;
     if ( $OPT->{debug} ) {
         my $s = sprintf "%s %s\n", _now(), sprintf $fmt, @data;
-        if ( $OPT->{debug} eq 'warn' ) {
-            warn $s;
+        if ( $OPT->{debug} eq 'warn' || $OPT->{debug} eq 'carp' ) {
+            carp $s;
 
         }
-        elsif ( $OPT->{debug} =~ m/^file:(.+)/ ) {
-            open my $out, '>>', $1 or warn sprintf '[debug IO to "%s" failed: %s] %s', $1, $ERRNO, $s;
+        elsif ( $OPT->{debug} =~ m/^file:(.+)/sm ) {
+            open my $out, '>>', $1 or carp sprintf '[debug IO to "%s" failed: %s] %s', $1, $ERRNO, $s;
             print {$out} $s;
             CORE::close($out);
 
         }
         else {
-            print STDOUT $s;
+            print {*STDOUT} $s;
         }
     }
     return;
@@ -500,7 +499,6 @@ sub _confess
     syslog( 'err', '%s', $msg );
     closelog();
     confess $msg;
-    return;
 }
 
 # ------------------------------------------------------------------------------
