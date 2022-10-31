@@ -27,6 +27,8 @@ Perl/Gtk IMAP уведомлятор.
         Error     => 'error.png',
         NoNew     => 'nonew.png',
         ReConnect => 'reconnect.png',
+        ReLogin   => 'relogin.png',
+        GetMail   => 'getmail.png',
     },
     IMAP =>
     {

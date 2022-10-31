@@ -45,6 +45,7 @@ const my %APP_ICO_SRC   => (
     error     => 'error.png',
     reconnect => 'reconnect.png',
     reload    => 'reload.png',
+    getmail   => 'getmail.png',
     quit      => 'quit.png',
     imap      => 'imap.png',
 );
@@ -257,10 +258,25 @@ sub _create_tray_icon
                 $item->show;
                 $menu->append($item);
 
-                $item = Gtk3::ImageMenuItem->new('Reconnect');
+                $item = Gtk3::ImageMenuItem->new('Get all mail now');
+                $item->set_image( $APP_ICO{getmail} );
+                $item->signal_connect(
+                    activate => sub {
+                        _dbg( '%s', 'Get all mail request received.' );
+                        while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
+                            $data->{mail_next} = time;
+                        }
+                        alarm 1;
+                    }
+                );
+                $item->show;
+                $menu->append($item);
+
+                $item = Gtk3::ImageMenuItem->new('Reconnect all');
                 $item->set_image( $APP_ICO{reconnect} );
                 $item->signal_connect(
                     activate => sub {
+                        _dbg( '%s', 'Reconnect all request received.' );
                         _disconnect_all();
                         alarm 1;
                     }
@@ -268,9 +284,14 @@ sub _create_tray_icon
                 $item->show;
                 $menu->append($item);
 
-                $item = Gtk3::ImageMenuItem->new('Reload');
+                $item = Gtk3::ImageMenuItem->new('Full reload');
                 $item->set_image( $APP_ICO{reload} );
-                $item->signal_connect( activate => sub { _app_reload(); } );
+                $item->signal_connect(
+                    activate => sub {
+                        _dbg( '%s', 'Full reload request received.' );
+                        _app_reload();
+                    }
+                );
                 $item->show;
                 $menu->append($item);
 
