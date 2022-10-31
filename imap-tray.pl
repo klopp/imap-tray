@@ -16,6 +16,8 @@ use English qw/-no_match_vars/;
 use File::Basename;
 use File::Temp qw/tempfile/;
 use Gtk3 qw/-init/;
+use IPC::SysV qw/IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT IPC_NOWAIT/;
+use IPC::Semaphore;
 use LWP::Simple;
 use Net::IMAP::Simple;
 use Try::Tiny;
@@ -45,8 +47,11 @@ const my %APP_ICO_SRC   => (
     quit      => 'quit.png',
     imap      => 'imap.png',
 );
+const my $PDS       => Domain::PublicSuffix->new();
+const my $SEMAPHORE => IPC::Semaphore->new( IPC_PRIVATE, 1, S_IRUSR | S_IWUSR | IPC_CREAT );
+$SEMAPHORE->setall( 1 );
+
 my ( $TRAYICON, $OPT, %APP_ICO );
-my $PDS = Domain::PublicSuffix->new();
 _app_init();
 local $SIG{ALRM} = \&_mail_loop;
 local $SIG{HUP}  = \&_app_reload;
@@ -57,9 +62,13 @@ Gtk3->main;
 # ------------------------------------------------------------------------------
 sub _app_reload
 {
+    while ( !$SEMAPHORE->op( 0, -1, IPC_NOWAIT ) ) {
+        sleep 1;
+    }
     _disconnect_all();
     _app_init();
     alarm 1;
+    $SEMAPHORE->op( 0, 1, 0 );
 }
 
 # ------------------------------------------------------------------------------
@@ -88,10 +97,13 @@ sub _app_init
 # ------------------------------------------------------------------------------
 sub _mail_loop
 {
-    state $locked = 0;
+    #    state $locked = 0;
+    #    return if $locked;
+    #    ++$locked;
 
-    return if $locked;
-    ++$locked;
+    while ( !$SEMAPHORE->op( 0, -1, IPC_NOWAIT ) ) {
+        sleep 1;
+    }
 
     my ( $errors, $unseen, @tooltip ) = ( 0, 0 );
 
@@ -139,7 +151,9 @@ sub _mail_loop
     $TRAYICON->set_tooltip_text( join "\n", @tooltip );
 
     alarm $SEC_IN_MIN;
-    $locked = 0;
+
+    #    $locked = 0;
+    $SEMAPHORE->op( 0, 1, 0 );
     return;
 }
 
@@ -494,6 +508,7 @@ sub _disconnect_all()
 # ------------------------------------------------------------------------------
 END {
     _disconnect_all();
+    $SEMAPHORE->remove;
 }
 
 # ------------------------------------------------------------------------------
@@ -523,8 +538,6 @@ IMAP-Tray
 
 =item L<Domain::PublicSuffix>
 
-=item L<Encode>
-
 =item L<Encode::IMAPUTF7>
 
 =item L<English>
@@ -534,6 +547,10 @@ IMAP-Tray
 =item L<File::Temp>
 
 =item L<Gtk3>
+
+=item L<IPC::SysV>
+
+=item L<IPC::Semaphore>
 
 =item L<LWP::Simple>
 
