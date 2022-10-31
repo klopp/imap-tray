@@ -471,7 +471,20 @@ sub _dbg
 {
     my ( $fmt, @data ) = @_;
     if ( $OPT->{debug} ) {
-        say sprintf '%s %s', _now(), sprintf $fmt, @data;
+        my $s = sprintf '%s %s', _now(), sprintf $fmt, @data;
+        if ( $OPT->{debug} eq 'warn' ) {
+            warn $s;
+
+        }
+        elsif ( $OPT->{debug} =~ m/^file:(.+)/ ) {
+            open my $out, '>>', $1 or warn sprintf '[debug IO to "%s" failed: %s] %s', $1, $ERRNO, $s;
+            print {$out} $s;
+            CORE::close($out);
+
+        }
+        else {
+            print STDOUT $s;
+        }
     }
     return;
 }
