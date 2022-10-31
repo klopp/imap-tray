@@ -16,10 +16,9 @@ use English qw/-no_match_vars/;
 use File::Basename;
 use File::Temp qw/tempfile/;
 use Gtk3 qw/-init/;
-use IPC::SysV qw/IPC_PRIVATE S_IRUSR S_IWUSR IPC_CREAT IPC_NOWAIT/;
-use IPC::Semaphore;
 use LWP::Simple;
 use Net::IMAP::Simple;
+use Thread::Semaphore;
 use Try::Tiny;
 use URI;
 
@@ -48,8 +47,7 @@ const my %APP_ICO_SRC   => (
     imap      => 'imap.png',
 );
 const my $PDS       => Domain::PublicSuffix->new();
-const my $SEMAPHORE => IPC::Semaphore->new( IPC_PRIVATE, 1, S_IRUSR | S_IWUSR | IPC_CREAT );
-$SEMAPHORE->setall( 1 );
+const my $SEMAPHORE => Thread::Semaphore->new();
 
 my ( $TRAYICON, $OPT, %APP_ICO );
 _app_init();
@@ -62,13 +60,11 @@ Gtk3->main;
 # ------------------------------------------------------------------------------
 sub _app_reload
 {
-    while ( !$SEMAPHORE->op( 0, -1, IPC_NOWAIT ) ) {
-        sleep 1;
-    }
+    $SEMAPHORE->down;
     _disconnect_all();
     _app_init();
     alarm 1;
-    $SEMAPHORE->op( 0, 1, 0 );
+    $SEMAPHORE->up;
 }
 
 # ------------------------------------------------------------------------------
@@ -97,13 +93,7 @@ sub _app_init
 # ------------------------------------------------------------------------------
 sub _mail_loop
 {
-    #    state $locked = 0;
-    #    return if $locked;
-    #    ++$locked;
-
-    while ( !$SEMAPHORE->op( 0, -1, IPC_NOWAIT ) ) {
-        sleep 1;
-    }
+    $SEMAPHORE->down;
 
     my ( $errors, $unseen, @tooltip ) = ( 0, 0 );
 
@@ -152,8 +142,7 @@ sub _mail_loop
 
     alarm $SEC_IN_MIN;
 
-    #    $locked = 0;
-    $SEMAPHORE->op( 0, 1, 0 );
+    $SEMAPHORE->up;
     return;
 }
 
@@ -508,7 +497,6 @@ sub _disconnect_all()
 # ------------------------------------------------------------------------------
 END {
     _disconnect_all();
-    $SEMAPHORE->remove;
 }
 
 # ------------------------------------------------------------------------------
@@ -548,13 +536,11 @@ IMAP-Tray
 
 =item L<Gtk3>
 
-=item L<IPC::SysV>
-
-=item L<IPC::Semaphore>
-
 =item L<LWP::Simple>
 
 =item L<Net::IMAP::Simple>
+
+=item L<Thread::Semaphore>
 
 =item L<Try::Tiny>
 
