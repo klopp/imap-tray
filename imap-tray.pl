@@ -18,6 +18,7 @@ use File::Temp qw/tempfile/;
 use Gtk3 qw/-init/;
 use LWP::Simple;
 use Net::IMAP::Simple;
+use Sys::Syslog;
 use Thread::Semaphore;
 use Try::Tiny;
 use URI;
@@ -28,6 +29,7 @@ our $VERSION = 'v1.5';
 # ------------------------------------------------------------------------------
 my ( undef, $APP_DIR ) = fileparse($PROGRAM_NAME);
 
+const my $APP_NAME      => 'IMAP-Tray';
 const my $GET_FAVICON   => 'http://www.google.com/s2/favicons?domain=%s';
 const my $ICO_INACTIVE  => 0.01;
 const my $ICO_ERROR     => 10;
@@ -310,7 +312,7 @@ sub _icon_from_file
         $ico = Gtk3::Image->new_from_pixbuf($pb);
     }
     catch {
-        _confess( "Can not create icon from file \"%s\":\n %s", $file, $ERRNO );
+        return _confess( "Can not create icon from file \"%s\":\n %s", $file, $ERRNO );
     };
     return $ico;
 }
@@ -383,9 +385,9 @@ sub _init_app_ico
 sub _get_config
 {
     my $config = $ARGV[0] ? $ARGV[0] : Config::Find->find;
-    _confess( '%s', 'Can not detect config file location' ) unless $config;
+    return _confess( '%s', 'Can not detect config file location' ) unless $config;
 
-    _confess( 'Can not open file "%s": %s', $config, $ERRNO )
+    return _confess( 'Can not open file "%s": %s', $config, $ERRNO )
         unless open( my $fh, '<', $config );
 
     local $INPUT_RECORD_SEPARATOR = undef;
@@ -394,12 +396,12 @@ sub _get_config
 
     my $cfg;
     eval "\$cfg = $cstring;";
-    _confess( 'Invalid config file "%s" (%s)', $config, $EVAL_ERROR )
+    return _confess( 'Invalid config file "%s" (%s)', $config, $EVAL_ERROR )
         unless $cfg;
     $cfg = _convert( $cfg, q{_} );
 
     my $cerr = _check_config($cfg);
-    _confess( '%s', $cerr ) if $cerr;
+    return _confess( '%s', $cerr ) if $cerr;
     return $cfg;
 }
 
@@ -471,7 +473,7 @@ sub _dbg
 {
     my ( $fmt, @data ) = @_;
     if ( $OPT->{debug} ) {
-        my $s = sprintf '%s %s', _now(), sprintf $fmt, @data;
+        my $s = sprintf "%s %s\n", _now(), sprintf $fmt, @data;
         if ( $OPT->{debug} eq 'warn' ) {
             warn $s;
 
@@ -493,7 +495,12 @@ sub _dbg
 sub _confess
 {
     my ( $fmt, @data ) = @_;
-    return confess sprintf "%s %s\n ", _now(), sprintf $fmt, @data;
+    my $msg = sprintf $fmt, @data;
+    openlog( "[$APP_NAME $VERSION]", 'ndelay,nofatal', 'user' );
+    syslog( 'err', '%s', $msg );
+    closelog();
+    confess $msg;
+    return;
 }
 
 # ------------------------------------------------------------------------------
@@ -552,6 +559,8 @@ IMAP-Tray
 =item L<LWP::Simple>
 
 =item L<Net::IMAP::Simple>
+
+=item L<Sys::Syslog>
 
 =item L<Thread::Semaphore>
 
