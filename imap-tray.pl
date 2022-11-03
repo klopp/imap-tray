@@ -231,6 +231,7 @@ sub _create_tray_icon
             if ( $event->button == $BUTTON_RIGHT ) {
                 my ( $menu, $item ) = ( Gtk3::Menu->new );
                 while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
+                    $name .= sprintf ' (%u)', $data->{mail_unseen} if $data->{mail_unseen};
                     $item = Gtk3::ImageMenuItem->new($name);
                     my $dest = $data->{image}->get_pixbuf->copy;
                     if ( !$data->{mail_active} ) {
