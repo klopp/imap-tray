@@ -17,7 +17,7 @@ use File::Basename;
 use File::Temp qw/tempfile/;
 use Gtk3 qw/-init/;
 use LWP::Simple;
-use Net::IMAP::Simple;
+use Mail::IMAPClient;
 use Sys::Syslog;
 use Thread::Semaphore;
 use Try::Tiny;
@@ -106,7 +106,8 @@ sub _mail_loop
 
         if ( $data->{mail_next} <= $now ) {
             undef $data->{mail_error};
-            $error             = _imap_login( $name, $data )     unless $data->{imap};
+
+            $error             = _imap_login( $name, $data )     unless $data->{imap}->IsAuthenticated;
             $error             = _check_one_imap( $name, $data ) unless $error;
             $data->{mail_next} = time + $data->{interval} * $SEC_IN_MIN;
         }
@@ -166,14 +167,9 @@ sub _check_one_imap
     }
 
     for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
-
-        my ($unseen) = $data->{imap}->status( $data->{mail_boxes}->[$i]->[0] );
-
-        if ( $data->{imap}->waserr ) {
-            $error = $data->{imap}->errstr;
-            last;
-        }
-        $unseen += 0;
+        my $unseen = $data->{imap}->unseen_count( $data->{mail_boxes}->[$i]->[0] ) + 0;
+        $error = $data->{imap}->LastError;
+        last if $error;
         $data->{mail_unseen} += $unseen;
         $data->{mail_boxes}->[$i]->[1] = $unseen;
         _dbg( '%s[%s] :: OK, unseen: %u', $name, $data->{mailboxes}->[$i], $unseen );
@@ -184,13 +180,13 @@ sub _check_one_imap
         _dbg( '%s :: error %s', $name, $error );
     }
     else {
+
         if ( $data->{mail_count} >= $data->{reconnectafter} ) {
             _dbg( '%s :: max attempts (%u), logout', $name, $data->{mail_count} );
             $data->{imap}->logout;
-            undef $data->{imap};
         }
-    }
 
+    }
     return $error;
 }
 
@@ -199,26 +195,15 @@ sub _imap_login
 {
     my ( $name, $data ) = @_;
 
-    my $error;
+    my $error = sprintf 'Can not login to "%s" :: %s', $name,
+        $EVAL_ERROR
+        unless $data->{imap}->connect(
+        User     => $data->{login},
+        Password => $data->{password},
+        );
 
-    $data->{opt}->{use_select_cache} = 0;
-    $data->{mail_count} = 0;
+    _dbg( '%s', $error ) if $error;
 
-    my $imap
-        = Net::IMAP::Simple->new( $data->{host}, %{ $data->{opt} } );
-    if ( !$imap ) {
-        $error = sprintf '%s :: unable to connect (%s)', $name, $Net::IMAP::Simple::errstr;
-        dbg( '%s', $error );
-    }
-    elsif ( !$imap->login( $data->{login}, $data->{password} ) ) {
-        $error = sprintf '%s :: unable to login (%s)', $name, $imap->errstr;
-        _dbg( '%s', $error );
-        undef $imap;
-    }
-    else {
-        _dbg( '%s :: login OK', $name );
-        $data->{imap} = $imap;
-    }
     return $error;
 }
 
@@ -251,7 +236,6 @@ sub _create_tray_icon
                             $data->{mail_active} ^= 1;
                             if ( !$data->{active} ) {
                                 $data->{imap}->logout if $data->{imap};
-                                undef $data->{imap};
                             }
                         }
                     );
@@ -354,7 +338,6 @@ sub _reset_imap_data
     $data->{mail_total}  = 0;
     $data->{mail_active} = $data->{active} // 0;
     $data->{reconnectafter} //= $INT_MAX;
-    undef $data->{imap};
     undef $data->{mail_error};
     return $data;
 }
@@ -403,6 +386,13 @@ sub _init_imap_data
         $ico = $IMAP_ICO_PATH . $ico;
     }
     $data->{image} = _icon_from_file($ico);
+
+    undef $data->{imap};
+    $data->{imap} = Mail::IMAPClient->new(
+        Server => $data->{host},
+        %{ $data->{opt} },
+    );
+
     return;
 }
 
@@ -541,7 +531,7 @@ sub _disconnect_all()
 {
     if ( $OPT && ref $OPT->{imap} eq 'HASH' ) {
         while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
-            $data->{imap}->logout if $data->{imap};
+            $data->{imap}->logout;
             _reset_imap_data($data);
         }
     }
@@ -591,7 +581,7 @@ IMAP-Tray
 
 =item L<LWP::Simple>
 
-=item L<Net::IMAP::Simple>
+=item L<Mail::IMAPClient>
 
 =item L<Sys::Syslog>
 
