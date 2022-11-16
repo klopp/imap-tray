@@ -535,7 +535,7 @@ sub _disconnect_all()
     if ($OPT) {
         while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
             _dbg( 'Disconnecting "%s"...', $name );
-            $data->{imap}->logout;
+            $data->{imap}->logout if $data->{imap} && !$data->{imap}->IsAuthenticated;
             _reset_imap_data($data);
         }
     }
