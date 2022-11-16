@@ -106,9 +106,7 @@ sub _mail_loop
 
         if ( $data->{mail_next} <= $now ) {
             undef $data->{mail_error};
-
-            $error             = _imap_login( $name, $data )     unless $data->{imap}->IsAuthenticated;
-            $error             = _check_one_imap( $name, $data ) unless $error;
+            $error = _check_one_imap( $name, $data ) unless $error;
             $data->{mail_next} = time + $data->{interval} * $SEC_IN_MIN;
         }
         else {
@@ -155,8 +153,6 @@ sub _check_one_imap
 {
     my ( $name, $data ) = @_;
 
-    my $error;
-
     $data->{mail_unseen} = 0;
     ++$data->{mail_count};
     if ( $data->{reconnectafter} == $INT_MAX ) {
@@ -166,13 +162,17 @@ sub _check_one_imap
         _dbg( '%s :: checking mail, attempt %u from %u...', $name, $data->{mail_count}, $data->{reconnectafter} );
     }
 
-    for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
-        my $unseen = $data->{imap}->unseen_count( $data->{mail_boxes}->[$i]->[0] ) + 0;
-        $error = $data->{imap}->LastError;
-        last if $error;
-        $data->{mail_unseen} += $unseen;
-        $data->{mail_boxes}->[$i]->[1] = $unseen;
-        _dbg( '%s[%s] :: OK, unseen: %u', $name, $data->{mailboxes}->[$i], $unseen );
+    my $error = _imap_login( $name, $data ) unless $data->{imap}->IsAuthenticated;
+
+    unless ($error) {
+        for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
+            my $unseen = $data->{imap}->unseen_count( $data->{mail_boxes}->[$i]->[0] ) + 0;
+            $error = $data->{imap}->LastError;
+            last if $error;
+            $data->{mail_unseen} += $unseen;
+            $data->{mail_boxes}->[$i]->[1] = $unseen;
+            _dbg( '%s[%s] :: OK, unseen: %u', $name, $data->{mailboxes}->[$i], $unseen );
+        }
     }
 
     if ($error) {
@@ -266,8 +266,10 @@ sub _create_tray_icon
                 $item->signal_connect(
                     activate => sub {
                         _dbg( '%s', 'Reconnect all request received.' );
+                        $SEMAPHORE->down;
                         _disconnect_all();
                         alarm 1;
+                        $SEMAPHORE->up;
                     }
                 );
                 $item->show;
@@ -529,8 +531,9 @@ sub _confess
 # ------------------------------------------------------------------------------
 sub _disconnect_all()
 {
-    if ( $OPT && ref $OPT->{imap} eq 'HASH' ) {
-        while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
+    if ($OPT) {
+        while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
+            _dbg( 'Disconnecting "%s"...', $name );
             $data->{imap}->logout;
             _reset_imap_data($data);
         }
