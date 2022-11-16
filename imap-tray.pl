@@ -158,8 +158,12 @@ sub _check_one_imap
 
     $data->{mail_unseen} = 0;
     ++$data->{mail_count};
-
-    _dbg( '%s :: checking mail, attempt %u from %u...', $name, $data->{mail_count}, $data->{reconnectafter} );
+    if ( $data->{reconnectafter} == $INT_MAX ) {
+        _dbg( '%s :: checking mail, attempt %u...', $name, $data->{mail_count} );
+    }
+    else {
+        _dbg( '%s :: checking mail, attempt %u from %u...', $name, $data->{mail_count}, $data->{reconnectafter} );
+    }
 
     for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
 
@@ -340,7 +344,7 @@ sub _icon_from_file
 }
 
 # ------------------------------------------------------------------------------
-sub _init_imap_data
+sub _reset_imap_data
 {
     my ($data) = @_;
 
@@ -352,6 +356,15 @@ sub _init_imap_data
     $data->{reconnectafter} //= $INT_MAX;
     undef $data->{imap};
     undef $data->{mail_error};
+    return $data;
+}
+
+# ------------------------------------------------------------------------------
+sub _init_imap_data
+{
+    my ($data) = @_;
+
+    _reset_imap_data($data);
 
     push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ] for @{ $data->{mailboxes} };
 
@@ -529,7 +542,7 @@ sub _disconnect_all()
     if ( $OPT && ref $OPT->{imap} eq 'HASH' ) {
         while ( my ( undef, $data ) = each %{ $OPT->{imap} } ) {
             $data->{imap}->logout if $data->{imap};
-            undef $data->{imap};
+            _reset_imap_data($data);
         }
     }
 }
