@@ -166,8 +166,9 @@ sub _check_one_imap
 
     unless ($error) {
         for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
-            my $unseen = $data->{imap}->unseen_count( $data->{mail_boxes}->[$i]->[0] ) + 0;
-            $error = $data->{imap}->LastError;
+            my $unseen = $data->{imap}->unseen_count( $data->{mail_boxes}->[$i]->[0] ) // 0;
+            $error = sprintf 'invalid "unsees" value (%s)', $unseen if $unseen !~ /^\d+$/gsm;
+            $error = $data->{imap}->LastError unless $error;
             last if $error;
             $data->{mail_unseen} += $unseen;
             $data->{mail_boxes}->[$i]->[1] = $unseen;
