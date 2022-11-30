@@ -637,9 +637,49 @@ Source code and issues can be found L<here|https://github.com/klopp/imap-tray>
 
 =head1 BUGS AND LIMITATIONS
 
-=head1 L<birdtray|https://github.com/gyunaev/birdtray>
+=head2 L<birdtray|https://github.com/gyunaev/birdtray>
 
 Use B<OnClick => 'birdtray -s'> with I<birdtray>.
+
+=head1 CONFIGURATION
+
+See C<imap-tray.conf.sample>
+
+=head1 DIAGNOSTICS
+
+=head2 Application debug
+
+```perl
+    Debug => 1, # use STDOUT
+```
+
+or
+
+```perl
+    Debug => 'warn', # use warn
+```
+
+or
+
+```perl
+    Debug => 'file:var/log/imap-tray.log', # use file
+```
+
+=head2 Mail server debug
+
+Some as "Application debug", but use C<IMAP/Server> secton:
+
+```perl
+    IMAP => 
+    {
+        Yandex => {
+            Opt =>
+            {
+                Debug => ...            
+            },
+        },
+    }
+```
 
 =cut
 
