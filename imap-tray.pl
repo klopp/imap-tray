@@ -153,6 +153,8 @@ sub _check_one_imap
 {
     my ( $name, $data ) = @_;
 
+    return unless $data->{mail_active};
+
     $data->{mail_unseen} = 0;
     ++$data->{mail_count};
     if ( $data->{reconnectafter} == $INT_MAX ) {
@@ -236,7 +238,7 @@ sub _create_tray_icon
                         activate => sub {
                             $data->{mail_active} ^= 1;
                             if ( !$data->{active} ) {
-                                $data->{imap}->logout if $data->{imap};
+                                $data->{imap}->logout unless $data->{imap}->IsAuthenticated;
                             }
                         }
                     );
@@ -254,7 +256,7 @@ sub _create_tray_icon
                     activate => sub {
                         _dbg( '%s', 'Get all mail request received.' );
                         while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
-                            $data->{mail_next} = time;
+                            $data->{mail_next} = time if $data->{mail_active};
                         }
                         alarm 1;
                     }
@@ -312,6 +314,10 @@ sub _on_click
     if ( ref $OPT->{onclick} eq 'CODE' ) {
         return &{ $OPT->{onclick} };
     }
+    my $cmd = $OPT->{onclick};
+    $cmd =~ s/^\s+|\s+$//gsm;
+    $cmd .= ' &' if $cmd !~ /[&]$/gsm;
+    _dbg( 'Executing "%s"...', $cmd );
     return system $OPT->{onclick};
 }
 
