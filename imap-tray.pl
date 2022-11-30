@@ -153,6 +153,8 @@ sub _check_one_imap
 {
     my ( $name, $data ) = @_;
 
+    return unless $data->{mail_active};
+
     $data->{mail_unseen} = 0;
     ++$data->{mail_count};
     if ( $data->{reconnectafter} == $INT_MAX ) {
@@ -162,7 +164,8 @@ sub _check_one_imap
         _dbg( '%s :: checking mail, attempt %u from %u...', $name, $data->{mail_count}, $data->{reconnectafter} );
     }
 
-    my $error = _imap_login( $name, $data ) unless $data->{imap}->IsAuthenticated;
+    my $error;
+    $error = _imap_login( $name, $data ) unless $data->{imap}->IsAuthenticated;
 
     unless ($error) {
         for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
@@ -196,7 +199,8 @@ sub _imap_login
 {
     my ( $name, $data ) = @_;
 
-    my $error = sprintf 'Can not login to "%s" :: %s', $name,
+    my $error;
+    $error = sprintf 'Can not login to "%s" :: %s', $name,
         $EVAL_ERROR
         unless $data->{imap}->connect(
         User     => $data->{login},
@@ -236,7 +240,7 @@ sub _create_tray_icon
                         activate => sub {
                             $data->{mail_active} ^= 1;
                             if ( !$data->{active} ) {
-                                $data->{imap}->logout if $data->{imap};
+                                $data->{imap}->logout unless $data->{imap}->IsAuthenticated;
                             }
                         }
                     );
@@ -254,7 +258,7 @@ sub _create_tray_icon
                     activate => sub {
                         _dbg( '%s', 'Get all mail request received.' );
                         while ( my ( $name, $data ) = each %{ $OPT->{imap} } ) {
-                            $data->{mail_next} = time;
+                            $data->{mail_next} = time if $data->{mail_active};
                         }
                         alarm 1;
                     }
@@ -312,6 +316,9 @@ sub _on_click
     if ( ref $OPT->{onclick} eq 'CODE' ) {
         return &{ $OPT->{onclick} };
     }
+    my $cmd = $OPT->{onclick};
+    $cmd =~ s/^\s+|\s+$//gsm;
+    _dbg( 'Executing "%s"...', $cmd );
     return system $OPT->{onclick};
 }
 
@@ -459,11 +466,20 @@ sub _convert
 }
 
 # ------------------------------------------------------------------------------
+sub _cfg_val_empty
+{
+    my ( $cfg, $key ) = @_;
+    my $value = $cfg->{$key};
+    $cfg->{$key} && $cfg->{$key} =~ s/^\s+|\s+$//gsm;
+    return $cfg->{$key};
+}
+
+# ------------------------------------------------------------------------------
 sub _check_config
 {
     my ($cfg) = @_;
 
-    return 'No "OnClick" key' unless $cfg->{onclick};
+    return 'No "OnClick" action' unless _cfg_val_empty( $cfg, 'onclick' );
     return 'Bad "Interval" key'
         if !$cfg->{interval}
         || $cfg->{interval} !~ /^\d+$/sm;
@@ -472,16 +488,14 @@ sub _check_config
 
     while ( my ( $name, $data ) = each %{ $cfg->{imap} } ) {
 
-        return "No \"host\" key in \"IMAP/$name\""     unless $data->{host};
-        return "No \"password\" key in \"IMAP/$name\"" unless $data->{password};
-        return "No \"login\" key in \"IMAP/$name\""    unless $data->{login};
+        return "No \"host\" key in \"IMAP/$name\""     unless _cfg_val_empty( $cfg, 'host' );
+        return "No \"password\" key in \"IMAP/$name\"" unless _cfg_val_empty( $cfg, 'password' );
+        return "No \"login\" key in \"IMAP/$name\""    unless _cfg_val_empty( $cfg, 'login' );
 
         return "No mailboxes in \"IMAP/$name\""
             if ref $data->{mailboxes} ne 'ARRAY'
             || $#{ $data->{mailboxes} } < 0;
-
         @{ $data->{mailboxes} } = sort @{ $data->{mailboxes} };
-
         return "Invalid \"ReconnectAfter\" value in \"IMAP/$name\""
             if $data->{reconnectafter} && $data->{reconnectafter} !~ /^\d+$/sm;
     }
@@ -619,8 +633,13 @@ Contact the author at klopp@yandex.ru.
 
 =head1 SOURCE CODE
 
-Source code and issues can be found here:
- <https://github.com/klopp/imap-tray>
+Source code and issues can be found L<here|https://github.com/klopp/imap-tray>
+
+=head1 BUGS AND LIMITATIONS
+
+=head1 L<birdtray|https://github.com/gyunaev/birdtray>
+
+Use B<OnClick => 'birdtray -s'> with I<birdtray>.
 
 =cut
 
