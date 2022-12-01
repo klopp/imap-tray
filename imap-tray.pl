@@ -233,7 +233,7 @@ sub _imap_login
     $error = sprintf 'Can not login to "%s" :: %s', $name,
         $EVAL_ERROR
         unless $data->{imap}->connect(
-        User     => $data->{login},
+        User     => $data->{user},
         Password => $data->{password},
         );
 
@@ -389,7 +389,8 @@ sub _init_imap_data
 
     _reset_imap_data($data);
 
-    push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ] for @{ $data->{mailboxes} };
+    push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ]
+        for @{ $data->{mailboxes} };
 
     my $ico  = $data->{icon};
     my $uri  = URI->new( 'http://' . $data->{host} );
@@ -400,7 +401,7 @@ sub _init_imap_data
         }
         else {
             $data->{image} = $APP_ICO{imap};
-            return;
+            undef $ico;
         }
     }
     elsif ( $ico eq 'online' ) {
@@ -408,24 +409,26 @@ sub _init_imap_data
         $icon = get( sprintf $GET_FAVICON, $root ) unless $icon;
         if ($icon) {
             my ( $fh, $filename ) = tempfile( UNLINK => 1 );
-            if ( !$fh ) {
-                $data->{image} = $APP_ICO{imap};
-                return;
+            if ($fh) {
+                binmode $fh, ':bytes';
+                print {$fh} $icon;
+                close $fh;
+                $ico = $filename;
             }
-            binmode $fh, ':bytes';
-            print {$fh} $icon;
-            close $fh;
-            $ico = $filename;
+            else {
+                $data->{image} = $APP_ICO{imap};
+                undef $ico;
+            }
         }
         else {
             $data->{image} = $APP_ICO{imap};
-            return;
+            undef $ico;
         }
     }
     else {
         $ico = $IMAP_ICO_PATH . $ico;
     }
-    $data->{image} = _icon_from_file($ico);
+    $data->{image} = _icon_from_file($ico) if $ico;
 
     undef $data->{imap};
     $data->{imap} = Mail::IMAPClient->new(
@@ -519,7 +522,7 @@ sub _check_config
 
         return "No \"host\" key in \"IMAP/$name\""     unless _cfg_val_empty( $data, 'host' );
         return "No \"password\" key in \"IMAP/$name\"" unless _cfg_val_empty( $data, 'password' );
-        return "No \"login\" key in \"IMAP/$name\""    unless _cfg_val_empty( $data, 'login' );
+        return "No \"user\" key in \"IMAP/$name\""    unless _cfg_val_empty( $data, 'user' );
 
         return "No mailboxes in \"IMAP/$name\""
             if ref $data->{mailboxes} ne 'ARRAY'
@@ -527,6 +530,8 @@ sub _check_config
         @{ $data->{mailboxes} } = sort @{ $data->{mailboxes} };
         return "Invalid \"ReconnectAfter\" value in \"IMAP/$name\""
             if $data->{reconnectafter} && $data->{reconnectafter} !~ /^\d+$/sm;
+        undef $data->{opt}->{user}; 
+        undef $data->{opt}->{password}; 
     }
     return;
 }
@@ -697,7 +702,7 @@ or
 
 or
 
-    Debug => 'file:var/log/imap-tray.log', # use file
+    Debug => 'file:/var/log/imap-tray.log', # use file, switch to warn if file open error
 
 Use STDOUT in other cases (if not undef/0 etc).
 

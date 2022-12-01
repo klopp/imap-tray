@@ -38,7 +38,7 @@ Perl/Gtk IMAP уведомлятор.
             Icon      => 'yandex.com.png',
             Active    => 1,
             Host      => 'imap.yandex.com:993',
-            Login     => 'USER@yandex.ru',
+            User      => 'USER@yandex.ru',
             Password  => 'PASSWORD',
             ReconnectAfter  => 128,
             Detailed => 1, 
@@ -76,7 +76,7 @@ Perl/Gtk IMAP уведомлятор.
 * *file:имя_файла* - писать в *имя_файла*
 * что-то другое - писать в STDOUT
 
-P.S. Не влияет на отладочные сообщения внутри почтовых сессий, для этого нужно использовать ключ [debug](https://metacpan.org/pod/Net::IMAP::Simple#debug) в настройках IMAP (см. ниже).
+P.S. Не влияет на отладочные сообщения внутри почтовых сессий, для этого нужно использовать ключ [debug](https://metacpan.org/pod/Mail::IMAPClient#Debug) в настройках IMAP (см. ниже).
 
 ## OnClick => действие
 
