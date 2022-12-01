@@ -7,7 +7,7 @@ use Modern::Perl;
 # ------------------------------------------------------------------------------
 use lib q{.};
 use Array::OrdHash;
-use Carp qw/confess carp/;
+use Carp qw/confess carp cluck/;
 use Config::Find;
 use Const::Fast;
 use Domain::PublicSuffix;
@@ -50,8 +50,8 @@ const my %APP_ICO_SRC   => (
     imap      => 'imap.png',
     digits    => 'digits-1.png',
 );
-const my $PDS        => Domain::PublicSuffix->new();
-const my $SEMAPHORE  => Thread::Semaphore->new();
+const my $PDS       => Domain::PublicSuffix->new();
+const my $SEMAPHORE => Thread::Semaphore->new();
 
 my ( $TRAYICON, $OPT, %APP_ICO );
 _app_init();
@@ -168,8 +168,7 @@ sub _set_unseen
         $x = 24 - 7 - 2;
     }
 
-    while( $number ) 
-    {
+    while ($number) {
         my $digit = $number % 10;
         $APP_ICO{digits}->get_pixbuf->copy_area( $digit * 7, 0, 7, 9, $pixbuf, $x, 8 );
         $number = int( $number / 10 );
@@ -545,14 +544,25 @@ sub _dbg
     my ( $fmt, @data ) = @_;
     if ( $OPT->{debug} ) {
         my $s = sprintf "%s %s\n", _now(), sprintf $fmt, @data;
-        if ( $OPT->{debug} eq 'warn' || $OPT->{debug} eq 'carp' ) {
+        if ( $OPT->{debug} eq 'warn' ) {
+            warn $s;
+
+        }
+        elsif ( $OPT->{debug} eq 'carp' ) {
             carp $s;
 
         }
         elsif ( $OPT->{debug} =~ m/^file:(.+)/sm ) {
-            open my $out, '>>', $1 or carp sprintf '[debug IO to "%s" failed: %s] %s', $1, $ERRNO, $s;
-            print {$out} $s;
-            CORE::close($out);
+            my ( $dfile, $out ) = ($1);
+            if ( open my $out, '>>', $dfile ) {
+                print {$out} $s;
+                CORE::close($out);
+            }
+            else {
+                cluck sprintf '%s Debug IO to "%s" failed (%s), switch to "warn"...', _now(), $dfile, $ERRNO;
+                $OPT->{debug} = 'warn';
+                _dbg( $fmt, @data );
+            }
 
         }
         else {
