@@ -24,7 +24,7 @@ use Try::Tiny;
 use URI;
 
 # ------------------------------------------------------------------------------
-our $VERSION = 'v2.0';
+our $VERSION = 'v2.1';
 
 # ------------------------------------------------------------------------------
 my ( undef, $APP_DIR ) = fileparse($PROGRAM_NAME);
@@ -48,9 +48,10 @@ const my %APP_ICO_SRC   => (
     getmail   => 'getmail.png',
     quit      => 'quit.png',
     imap      => 'imap.png',
+    digits    => 'digits-1.png',
 );
-const my $PDS       => Domain::PublicSuffix->new();
-const my $SEMAPHORE => Thread::Semaphore->new();
+const my $PDS        => Domain::PublicSuffix->new();
+const my $SEMAPHORE  => Thread::Semaphore->new();
 
 my ( $TRAYICON, $OPT, %APP_ICO );
 _app_init();
@@ -136,16 +137,46 @@ sub _mail_loop
     if ($errors) {
         $ico = 'error';
     }
-    elsif ($unseen) {
-        $ico = 'new';
-    }
-    $TRAYICON->set_from_pixbuf( $APP_ICO{$ico}->get_pixbuf );
+
+    my $pixbuf = _set_unseen( $unseen, $ico );
+
+    $TRAYICON->set_from_pixbuf($pixbuf);
     $TRAYICON->set_tooltip_text( join "\n", @tooltip );
 
     alarm $SEC_IN_MIN;
 
     $SEMAPHORE->up;
     return;
+}
+
+# ------------------------------------------------------------------------------
+sub _set_unseen
+{
+    my ( $unseen, $ico ) = @_;
+
+    my $pixbuf = $APP_ICO{$ico}->get_pixbuf;
+    return $pixbuf unless $unseen;
+
+    my $x      = 12 - 3;
+    my $number = $unseen;
+    $number = 999 if $number > 999;
+
+    if ( $number < 100 && $number > 9 ) {
+        $x = 12;
+    }
+    elsif ( $number > 99 ) {
+        $x = 24 - 7 - 2;
+    }
+
+    while( $number ) 
+    {
+        my $digit = $number % 10;
+        $APP_ICO{digits}->get_pixbuf->copy_area( $digit * 7, 0, 7, 9, $pixbuf, $x, 8 );
+        $number = int( $number / 10 );
+        $x -= 7;
+    }
+
+    return $pixbuf;
 }
 
 # ------------------------------------------------------------------------------
@@ -469,7 +500,6 @@ sub _convert
 sub _cfg_val_empty
 {
     my ( $cfg, $key ) = @_;
-    my $value = $cfg->{$key};
     $cfg->{$key} && $cfg->{$key} =~ s/^\s+|\s+$//gsm;
     return $cfg->{$key};
 }
@@ -488,9 +518,9 @@ sub _check_config
 
     while ( my ( $name, $data ) = each %{ $cfg->{imap} } ) {
 
-        return "No \"host\" key in \"IMAP/$name\""     unless _cfg_val_empty( $cfg, 'host' );
-        return "No \"password\" key in \"IMAP/$name\"" unless _cfg_val_empty( $cfg, 'password' );
-        return "No \"login\" key in \"IMAP/$name\""    unless _cfg_val_empty( $cfg, 'login' );
+        return "No \"host\" key in \"IMAP/$name\""     unless _cfg_val_empty( $data, 'host' );
+        return "No \"password\" key in \"IMAP/$name\"" unless _cfg_val_empty( $data, 'password' );
+        return "No \"login\" key in \"IMAP/$name\""    unless _cfg_val_empty( $data, 'login' );
 
         return "No mailboxes in \"IMAP/$name\""
             if ref $data->{mailboxes} ne 'ARRAY'
