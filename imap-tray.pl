@@ -455,7 +455,7 @@ sub _get_config
     return _confess( '%s', 'Can not detect config file location' ) unless $config;
 
     my $cfg = do $config;
-    _confess( 'Invalid config file "%s" error: %s', $config, $EVAL_ERROR ? $EVAL_ERROR : $ERRNO ) unless $cfg;
+    _confess( 'Invalid config file "%s": %s', $config, $EVAL_ERROR ? $EVAL_ERROR : $ERRNO ) unless $cfg;
     $cfg = _convert( $cfg, q{_} );
 
     my $cerr = _check_config($cfg);
