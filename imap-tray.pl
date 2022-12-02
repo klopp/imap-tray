@@ -154,7 +154,7 @@ sub _set_unseen
 {
     my ( $unseen, $ico ) = @_;
 
-    my $pixbuf = $APP_ICO{$ico}->get_pixbuf;
+    my $pixbuf = $APP_ICO{$ico}->get_pixbuf->copy;
     return $pixbuf unless $unseen;
 
     my $x      = 12 - 3;
