@@ -13,23 +13,14 @@ Perl/Gtk IMAP уведомлятор.
 
 ```perl
 {
-    Debug    => 1,
+    Debug    => 'warn',
     OnClick  => '/usr/bin/evolution',
     Interval => 2,
     #OnClick => sub
     #{
     #  print "Click\n";  
     #},
-    Icons => {
-        New       => 'new.png',
-        Quit      => 'quit.png',
-        Imap      => 'imap.png',
-        Error     => 'error.png',
-        NoNew     => 'nonew.png',
-        ReConnect => 'reconnect.png',
-        ReLogin   => 'relogin.png',
-        GetMail   => 'getmail.png',
-    },
+
     IMAP =>
     {
         Yandex => 
@@ -86,10 +77,6 @@ P.S. Не влияет на отладочные сообщения внутри
 
 Интервал меджу проверками почтовых ящиков по умолчанию.
 
-## Icons => { список }
-
-Переопределение стандартных иконок. Файлы с иконками должны находиться в каталоге `i/` программы. **Использовать на свой страх и риск, не рекомендуется**.
-
 ## IMAP => список
 
 Список почтовых серверов в формате
@@ -111,7 +98,7 @@ P.S. Не влияет на отладочные сообщения внутри
 
 Если undef/0, то хост исключается из проверки. После запуска программы состояние меняется кликом по соответствующему пункту всплывающего меню.
 
-### Host, Login, Password, Mailboxes
+### Host, User, Password, Mailboxes
 
 Очевидно.
 

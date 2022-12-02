@@ -7,17 +7,6 @@
     #},
     Interval  => 2,
 
-    Icons => {
-        New       => 'new.png',
-        Quit      =>'quit.png',
-        Imap      => 'imap.png',
-        Error     => 'error.png',
-        NoNew     => 'nonew.png',
-        ReConnect => 'reconnect.png',
-        ReLogin   => 'relogin.png',
-        GetMail   => 'getmail.png',
-    },
-
     IMAP =>
     {
         Yandex => 
@@ -25,10 +14,10 @@
             # Icon     => 'online',
             Active    => 1,
             Host      => 'imap.yandex.com:993',
-            Login     => 'USER@yandex.ru',
+            User      => 'USER@yandex.ru',
             Password  => 'PASSWORD',
             ReconnectAfter  => 128,
-            Detailed => 1, 
+            Detailed  => 1, 
             Interval  => 1,
             Opt =>
             {
@@ -45,10 +34,10 @@
             # Icon     => 'online',
             Active    => 1,
             Host      => 'imap.mail.ru:993',
-            Login     => 'USER@mail.ru',
+            User      => 'USER@mail.ru',
             Password  => 'PASSWORD',
             ReconnectAfter  => 128, 
-            Detailed => 1, 
+            Detailed  => 1, 
             Interval  => 2,
             Opt =>
             {
@@ -65,8 +54,8 @@
             # Icon     => 'online',
             Active    => 1,
             Host      => 'imap.googlemail.com:993',
-            Login     => 'USER@gmail.com',
-            Password => 'PASSWORD',
+            User      => 'USER@gmail.com',
+            Password  => 'PASSWORD',
             ReconnectAfter  => 128, 
             Interval  => 3,
             Opt =>
