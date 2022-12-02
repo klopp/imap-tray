@@ -11,6 +11,7 @@ use Carp qw/confess carp cluck/;
 use Config::Find;
 use Const::Fast;
 use Domain::PublicSuffix;
+use Encode qw/decode_utf8/;
 use Encode::IMAPUTF7;
 use English qw/-no_match_vars/;
 use File::Basename;
@@ -40,15 +41,14 @@ const my $SEC_IN_MIN    => 60;
 const my $APP_ICO_PATH  => $APP_DIR . 'i/';
 const my $IMAP_ICO_PATH => $APP_DIR . 'i/m/';
 const my %APP_ICO_SRC   => (
-    new       => 'new.png',
-    nonew     => 'nonew.png',
+    normal    => 'normal.png',
     error     => 'error.png',
     reconnect => 'reconnect.png',
     reload    => 'reload.png',
     getmail   => 'getmail.png',
     quit      => 'quit.png',
     imap      => 'imap.png',
-    digits    => 'digits-1.png',
+    digits    => 'digits.png',
 );
 const my $PDS       => Domain::PublicSuffix->new();
 const my $SEMAPHORE => Thread::Semaphore->new();
@@ -133,7 +133,7 @@ sub _mail_loop
         }
     }
 
-    my $ico = 'nonew';
+    my $ico = 'normal';
     if ($errors) {
         $ico = 'error';
     }
@@ -246,7 +246,7 @@ sub _imap_login
 sub _create_tray_icon
 {
     my $ti = Gtk3::StatusIcon->new;
-    $ti->set_from_pixbuf( $APP_ICO{nonew}->get_pixbuf );
+    $ti->set_from_pixbuf( $APP_ICO{normal}->get_pixbuf );
 
     $ti->signal_connect(
 
@@ -389,8 +389,7 @@ sub _init_imap_data
 
     _reset_imap_data($data);
 
-    push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ]
-        for @{ $data->{mailboxes} };
+    push @{ $data->{mail_boxes} }, [ Encode::IMAPUTF7::encode( 'IMAP-UTF-7', $_ ), 0 ] for @{ $data->{mailboxes} };
 
     my $ico  = $data->{icon};
     my $uri  = URI->new( 'http://' . $data->{host} );
@@ -455,16 +454,8 @@ sub _get_config
     my $config = $ARGV[0] ? $ARGV[0] : Config::Find->find;
     return _confess( '%s', 'Can not detect config file location' ) unless $config;
 
-    return _confess( 'Can not open file "%s": %s', $config, $ERRNO )
-        unless open( my $fh, '<', $config );
-
-    local $INPUT_RECORD_SEPARATOR = undef;
-    my $cstring = <$fh>;
-    close $fh;
-
-    my $cfg = eval $cstring;
-    return _confess( 'Invalid config file "%s" (%s)', $config, $EVAL_ERROR )
-        unless $cfg;
+    my $cfg = do $config;
+    _confess( 'Invalid config file "%s" error: %s', $config, $EVAL_ERROR ? $EVAL_ERROR : $ERRNO ) unless $cfg;
     $cfg = _convert( $cfg, q{_} );
 
     my $cerr = _check_config($cfg);
@@ -493,7 +484,7 @@ sub _convert
             keys %{$src};
     }
     else {
-        $dest = $src;
+        $dest = decode_utf8 $src;
     }
     return $dest;
 }
@@ -522,7 +513,7 @@ sub _check_config
 
         return "No \"host\" key in \"IMAP/$name\""     unless _cfg_val_empty( $data, 'host' );
         return "No \"password\" key in \"IMAP/$name\"" unless _cfg_val_empty( $data, 'password' );
-        return "No \"user\" key in \"IMAP/$name\""    unless _cfg_val_empty( $data, 'user' );
+        return "No \"user\" key in \"IMAP/$name\""     unless _cfg_val_empty( $data, 'user' );
 
         return "No mailboxes in \"IMAP/$name\""
             if ref $data->{mailboxes} ne 'ARRAY'
@@ -530,8 +521,8 @@ sub _check_config
         @{ $data->{mailboxes} } = sort @{ $data->{mailboxes} };
         return "Invalid \"ReconnectAfter\" value in \"IMAP/$name\""
             if $data->{reconnectafter} && $data->{reconnectafter} !~ /^\d+$/sm;
-        undef $data->{opt}->{user}; 
-        undef $data->{opt}->{password}; 
+        undef $data->{opt}->{user};
+        undef $data->{opt}->{password};
     }
     return;
 }
@@ -633,6 +624,8 @@ IMAP-Tray
 =item L<Domain::PublicSuffix>
 
 =item L<Encode::IMAPUTF7>
+
+=item L<Encode>
 
 =item L<English>
 
