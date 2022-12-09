@@ -14,6 +14,7 @@ use Domain::PublicSuffix;
 use Encode qw/decode_utf8/;
 use Encode::IMAPUTF7;
 use English qw/-no_match_vars/;
+use Fcntl qw/:flock/;
 use File::Basename;
 use File::Temp qw/tempfile/;
 use Gtk3 qw/-init/;
@@ -545,7 +546,7 @@ sub _dbg
 {
     my ( $fmt, @data ) = @_;
     if ( $OPT->{debug} ) {
-        my $s = sprintf "%s %s\n", _now(), sprintf $fmt, @data;
+        my $s = sprintf "(%u) %s %s\n", $PID, _now(), sprintf $fmt, @data;
         if ( $OPT->{debug} eq 'warn' ) {
             warn $s;
 
@@ -556,7 +557,7 @@ sub _dbg
         }
         elsif ( $OPT->{debug} =~ m/^file:(.+)/sm ) {
             my ( $dfile, $out ) = ($1);
-            if ( open my $out, '>>', $dfile ) {
+            if ( open( $out, '>>', $dfile ) && flock $out, LOCK_EX ) {
                 print {$out} $s;
                 CORE::close($out);
             }
@@ -634,6 +635,8 @@ IMAP-Tray
 =item L<Encode>
 
 =item L<English>
+
+=item L<Fcntl>
 
 =item L<File::Basename>
 
