@@ -64,6 +64,7 @@ Perl/Gtk IMAP уведомлятор.
 
 * *warn* - использовать warn для вывода
 * *carp* - использовать [Carp::carp](https://metacpan.org/pod/Carp) для вывода
+* *syslog* - syslog `'debug', 'ndelay,nofatal', 'user'`
 * *file:имя_файла* - писать в *имя_файла*
 * что-то другое - писать в STDOUT
 
