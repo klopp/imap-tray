@@ -25,7 +25,7 @@ use Try::Tiny;
 use URI;
 
 # ------------------------------------------------------------------------------
-our $VERSION = 'v2.1';
+our $VERSION = 'v2.2';
 
 # ------------------------------------------------------------------------------
 my ( undef, $APP_DIR ) = fileparse($PROGRAM_NAME);
@@ -50,8 +50,8 @@ const my %APP_ICO_SRC   => (
     imap      => 'imap.png',
     digits    => 'digits.png',
 );
-const my $PDS       => Domain::PublicSuffix->new();
-const my $SEMAPHORE => Thread::Semaphore->new();
+const my $PDS       => Domain::PublicSuffix->new;
+const my $SEMAPHORE => Thread::Semaphore->new;
 
 my ( $TRAYICON, $OPT, %APP_ICO );
 _app_init();
@@ -119,18 +119,24 @@ sub _mail_loop
             $data->{mail_error} = $error;
             ++$errors;
         }
-        else {
-            if ( $data->{detailed} ) {
-                for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
-                    push @tooltip,
-                        $name . q{[} . $data->{mailboxes}->[$i] . '] :: ' . $data->{mail_boxes}->[$i]->[1] . ' new';
+
+        if ( $data->{detailed} ) {
+            for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
+                my $sunseen = $data->{mail_boxes}->[$i]->[1];
+                if ($sunseen) {
+                    $sunseen .= '(?)' if $error;
+                    push @tooltip, $name . q{[} . $data->{mailboxes}->[$i] . '] :: ' . $sunseen . ' new';
                 }
             }
-            else {
-                push @tooltip, $name . ' :: ' . $data->{mail_unseen} . ' new';
-            }
-            $unseen += $data->{mail_unseen};
         }
+        else {
+            my $sunseen = $data->{mail_unseen};
+            if ($sunseen) {
+                $sunseen .= '(?)' if $error;
+                push @tooltip, $name . ' :: ' . $sunseen . ' new';
+            }
+        }
+        $unseen += $data->{mail_unseen};
     }
 
     my $ico = 'normal';
