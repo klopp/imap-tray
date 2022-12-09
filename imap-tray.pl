@@ -568,6 +568,9 @@ sub _dbg
             }
 
         }
+        elsif ( $OPT->{debug} eq 'syslog' ) {
+            _syslog( 'debug', $s );
+        }
         else {
             print {*STDOUT} $s;
         }
@@ -576,13 +579,20 @@ sub _dbg
 }
 
 # ------------------------------------------------------------------------------
+sub _syslog
+{
+    my ( $prio, $msg ) = @_;
+    openlog( "[$APP_NAME $VERSION]", 'ndelay,nofatal', 'user' );
+    syslog( $prio, '%s', $msg );
+    closelog();
+}
+
+# ------------------------------------------------------------------------------
 sub _confess
 {
     my ( $fmt, @data ) = @_;
     my $msg = sprintf $fmt, @data;
-    openlog( "[$APP_NAME $VERSION]", 'ndelay,nofatal', 'user' );
-    syslog( 'err', '%s', $msg );
-    closelog();
+    _syslog( 'err', $msg );
     confess $msg;
 }
 
