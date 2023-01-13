@@ -13,23 +13,14 @@ Perl/Gtk IMAP уведомлятор.
 
 ```perl
 {
-    Debug    => 1,
+    Debug    => 'warn',
     OnClick  => '/usr/bin/evolution',
     Interval => 2,
     #OnClick => sub
     #{
     #  print "Click\n";  
     #},
-    Icons => {
-        New       => 'new.png',
-        Quit      => 'quit.png',
-        Imap      => 'imap.png',
-        Error     => 'error.png',
-        NoNew     => 'nonew.png',
-        ReConnect => 'reconnect.png',
-        ReLogin   => 'relogin.png',
-        GetMail   => 'getmail.png',
-    },
+
     IMAP =>
     {
         Yandex => 
@@ -38,7 +29,7 @@ Perl/Gtk IMAP уведомлятор.
             Icon      => 'yandex.com.png',
             Active    => 1,
             Host      => 'imap.yandex.com:993',
-            Login     => 'USER@yandex.ru',
+            User      => 'USER@yandex.ru',
             Password  => 'PASSWORD',
             ReconnectAfter  => 128,
             Detailed => 1, 
@@ -72,10 +63,12 @@ Perl/Gtk IMAP уведомлятор.
 Возможные значения:
 
 * *warn* - использовать warn для вывода
+* *carp* - использовать [Carp::carp](https://metacpan.org/pod/Carp) для вывода
+* *syslog* - syslog `'debug', 'ndelay,nofatal', 'user'`
 * *file:имя_файла* - писать в *имя_файла*
 * что-то другое - писать в STDOUT
 
-P.S. Не влияет на отладочные сообщения внутри почтовых сессий, для этого нужно использовать ключ [debug](https://metacpan.org/pod/Net::IMAP::Simple#debug) в настройках IMAP (см. ниже).
+P.S. Не влияет на отладочные сообщения внутри почтовых сессий, для этого нужно использовать ключ [debug](https://metacpan.org/pod/Mail::IMAPClient#Debug) в настройках IMAP (см. ниже).
 
 ## OnClick => действие
 
@@ -84,10 +77,6 @@ P.S. Не влияет на отладочные сообщения внутри
 ## Interval => минуты
 
 Интервал меджу проверками почтовых ящиков по умолчанию.
-
-## Icons => { список }
-
-Переопределение стандартных иконок. Файлы с иконками должны находиться в каталоге `i/` программы. **Использовать на свой страх и риск, не рекомендуется**.
 
 ## IMAP => список
 
@@ -110,7 +99,7 @@ P.S. Не влияет на отладочные сообщения внутри
 
 Если undef/0, то хост исключается из проверки. После запуска программы состояние меняется кликом по соответствующему пункту всплывающего меню.
 
-### Host, Login, Password, Mailboxes
+### Host, User, Password, Mailboxes
 
 Очевидно.
 

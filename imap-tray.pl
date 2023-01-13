@@ -7,24 +7,26 @@ use Modern::Perl;
 # ------------------------------------------------------------------------------
 use lib q{.};
 use Array::OrdHash;
-use Carp qw/confess carp/;
+use Carp qw/confess carp cluck/;
 use Config::Find;
 use Const::Fast;
 use Domain::PublicSuffix;
+use Encode qw/decode_utf8/;
 use Encode::IMAPUTF7;
 use English qw/-no_match_vars/;
+use Fcntl qw/:flock/;
 use File::Basename;
 use File::Temp qw/tempfile/;
 use Gtk3 qw/-init/;
 use LWP::Simple;
 use Mail::IMAPClient;
+use Mutex;
 use Sys::Syslog;
-use Thread::Semaphore;
 use Try::Tiny;
 use URI;
 
 # ------------------------------------------------------------------------------
-our $VERSION = 'v2.0';
+our $VERSION = 'v2.2';
 
 # ------------------------------------------------------------------------------
 my ( undef, $APP_DIR ) = fileparse($PROGRAM_NAME);
@@ -40,17 +42,17 @@ const my $SEC_IN_MIN    => 60;
 const my $APP_ICO_PATH  => $APP_DIR . 'i/';
 const my $IMAP_ICO_PATH => $APP_DIR . 'i/m/';
 const my %APP_ICO_SRC   => (
-    new       => 'new.png',
-    nonew     => 'nonew.png',
+    normal    => 'normal.png',
     error     => 'error.png',
     reconnect => 'reconnect.png',
     reload    => 'reload.png',
     getmail   => 'getmail.png',
     quit      => 'quit.png',
     imap      => 'imap.png',
+    digits    => 'digits.png',
 );
-const my $PDS       => Domain::PublicSuffix->new();
-const my $SEMAPHORE => Thread::Semaphore->new();
+const my $PDS       => Domain::PublicSuffix->new;
+const my $MUTEX => Mutex->new;
 
 my ( $TRAYICON, $OPT, %APP_ICO );
 _app_init();
@@ -63,11 +65,11 @@ Gtk3->main;
 # ------------------------------------------------------------------------------
 sub _app_reload
 {
-    $SEMAPHORE->down;
+    $MUTEX->lock;
     _disconnect_all();
     _app_init();
     alarm 1;
-    $SEMAPHORE->up;
+    $MUTEX->unlock;
 }
 
 # ------------------------------------------------------------------------------
@@ -96,7 +98,7 @@ sub _app_init
 # ------------------------------------------------------------------------------
 sub _mail_loop
 {
-    $SEMAPHORE->down;
+    $MUTEX->lock;
 
     my ( $errors, $unseen, @tooltip ) = ( 0, 0 );
 
@@ -118,34 +120,69 @@ sub _mail_loop
             $data->{mail_error} = $error;
             ++$errors;
         }
-        else {
-            if ( $data->{detailed} ) {
-                for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
-                    push @tooltip,
-                        $name . q{[} . $data->{mailboxes}->[$i] . '] :: ' . $data->{mail_boxes}->[$i]->[1] . ' new';
+
+        if ( $data->{detailed} ) {
+            for my $i ( 0 .. $#{ $data->{mailboxes} } ) {
+                my $sunseen = $data->{mail_boxes}->[$i]->[1];
+                if ($sunseen) {
+                    $sunseen .= '(?)' if $error;
+                    push @tooltip, $name . q{[} . $data->{mailboxes}->[$i] . '] :: ' . $sunseen . ' new';
                 }
             }
-            else {
-                push @tooltip, $name . ' :: ' . $data->{mail_unseen} . ' new';
-            }
-            $unseen += $data->{mail_unseen};
         }
+        else {
+            my $sunseen = $data->{mail_unseen};
+            if ($sunseen) {
+                $sunseen .= '(?)' if $error;
+                push @tooltip, $name . ' :: ' . $sunseen . ' new';
+            }
+        }
+        $unseen += $data->{mail_unseen};
     }
 
-    my $ico = 'nonew';
+    my $ico = 'normal';
     if ($errors) {
         $ico = 'error';
     }
-    elsif ($unseen) {
-        $ico = 'new';
-    }
-    $TRAYICON->set_from_pixbuf( $APP_ICO{$ico}->get_pixbuf );
+
+    my $pixbuf = _set_unseen( $unseen, $ico );
+
+    $TRAYICON->set_from_pixbuf($pixbuf);
     $TRAYICON->set_tooltip_text( join "\n", @tooltip );
 
     alarm $SEC_IN_MIN;
 
-    $SEMAPHORE->up;
+    $MUTEX->unlock;
     return;
+}
+
+# ------------------------------------------------------------------------------
+sub _set_unseen
+{
+    my ( $unseen, $ico ) = @_;
+
+    my $pixbuf = $APP_ICO{$ico}->get_pixbuf->copy;
+    return $pixbuf unless $unseen;
+
+    my $x      = 12 - 3;
+    my $number = $unseen;
+    $number = 999 if $number > 999;
+
+    if ( $number < 100 && $number > 9 ) {
+        $x = 12;
+    }
+    elsif ( $number > 99 ) {
+        $x = 24 - 7 - 2;
+    }
+
+    while ($number) {
+        my $digit = $number % 10;
+        $APP_ICO{digits}->get_pixbuf->copy_area( $digit * 7, 0, 7, 9, $pixbuf, $x, 8 );
+        $number = int( $number / 10 );
+        $x -= 7;
+    }
+
+    return $pixbuf;
 }
 
 # ------------------------------------------------------------------------------
@@ -203,7 +240,7 @@ sub _imap_login
     $error = sprintf 'Can not login to "%s" :: %s', $name,
         $EVAL_ERROR
         unless $data->{imap}->connect(
-        User     => $data->{login},
+        User     => $data->{user},
         Password => $data->{password},
         );
 
@@ -216,7 +253,7 @@ sub _imap_login
 sub _create_tray_icon
 {
     my $ti = Gtk3::StatusIcon->new;
-    $ti->set_from_pixbuf( $APP_ICO{nonew}->get_pixbuf );
+    $ti->set_from_pixbuf( $APP_ICO{normal}->get_pixbuf );
 
     $ti->signal_connect(
 
@@ -271,10 +308,10 @@ sub _create_tray_icon
                 $item->signal_connect(
                     activate => sub {
                         _dbg( '%s', 'Reconnect all request received.' );
-                        $SEMAPHORE->down;
+                        $MUTEX->lock;
                         _disconnect_all();
                         alarm 1;
-                        $SEMAPHORE->up;
+                        $MUTEX->unlock;
                     }
                 );
                 $item->show;
@@ -370,7 +407,7 @@ sub _init_imap_data
         }
         else {
             $data->{image} = $APP_ICO{imap};
-            return;
+            undef $ico;
         }
     }
     elsif ( $ico eq 'online' ) {
@@ -378,24 +415,26 @@ sub _init_imap_data
         $icon = get( sprintf $GET_FAVICON, $root ) unless $icon;
         if ($icon) {
             my ( $fh, $filename ) = tempfile( UNLINK => 1 );
-            if ( !$fh ) {
-                $data->{image} = $APP_ICO{imap};
-                return;
+            if ($fh) {
+                binmode $fh, ':bytes';
+                print {$fh} $icon;
+                close $fh;
+                $ico = $filename;
             }
-            binmode $fh, ':bytes';
-            print {$fh} $icon;
-            close $fh;
-            $ico = $filename;
+            else {
+                $data->{image} = $APP_ICO{imap};
+                undef $ico;
+            }
         }
         else {
             $data->{image} = $APP_ICO{imap};
-            return;
+            undef $ico;
         }
     }
     else {
         $ico = $IMAP_ICO_PATH . $ico;
     }
-    $data->{image} = _icon_from_file($ico);
+    $data->{image} = _icon_from_file($ico) if $ico;
 
     undef $data->{imap};
     $data->{imap} = Mail::IMAPClient->new(
@@ -422,16 +461,8 @@ sub _get_config
     my $config = $ARGV[0] ? $ARGV[0] : Config::Find->find;
     return _confess( '%s', 'Can not detect config file location' ) unless $config;
 
-    return _confess( 'Can not open file "%s": %s', $config, $ERRNO )
-        unless open( my $fh, '<', $config );
-
-    local $INPUT_RECORD_SEPARATOR = undef;
-    my $cstring = <$fh>;
-    close $fh;
-
-    my $cfg = eval $cstring;
-    return _confess( 'Invalid config file "%s" (%s)', $config, $EVAL_ERROR )
-        unless $cfg;
+    my $cfg = do $config;
+    _confess( 'Invalid config file "%s": %s', $config, $EVAL_ERROR ? $EVAL_ERROR : $ERRNO ) unless $cfg;
     $cfg = _convert( $cfg, q{_} );
 
     my $cerr = _check_config($cfg);
@@ -460,7 +491,7 @@ sub _convert
             keys %{$src};
     }
     else {
-        $dest = $src;
+        $dest = decode_utf8 $src;
     }
     return $dest;
 }
@@ -469,7 +500,6 @@ sub _convert
 sub _cfg_val_empty
 {
     my ( $cfg, $key ) = @_;
-    my $value = $cfg->{$key};
     $cfg->{$key} && $cfg->{$key} =~ s/^\s+|\s+$//gsm;
     return $cfg->{$key};
 }
@@ -488,9 +518,9 @@ sub _check_config
 
     while ( my ( $name, $data ) = each %{ $cfg->{imap} } ) {
 
-        return "No \"host\" key in \"IMAP/$name\""     unless _cfg_val_empty( $cfg, 'host' );
-        return "No \"password\" key in \"IMAP/$name\"" unless _cfg_val_empty( $cfg, 'password' );
-        return "No \"login\" key in \"IMAP/$name\""    unless _cfg_val_empty( $cfg, 'login' );
+        return "No \"host\" key in \"IMAP/$name\""     unless _cfg_val_empty( $data, 'host' );
+        return "No \"password\" key in \"IMAP/$name\"" unless _cfg_val_empty( $data, 'password' );
+        return "No \"user\" key in \"IMAP/$name\""     unless _cfg_val_empty( $data, 'user' );
 
         return "No mailboxes in \"IMAP/$name\""
             if ref $data->{mailboxes} ne 'ARRAY'
@@ -498,6 +528,8 @@ sub _check_config
         @{ $data->{mailboxes} } = sort @{ $data->{mailboxes} };
         return "Invalid \"ReconnectAfter\" value in \"IMAP/$name\""
             if $data->{reconnectafter} && $data->{reconnectafter} !~ /^\d+$/sm;
+        undef $data->{opt}->{user};
+        undef $data->{opt}->{password};
     }
     return;
 }
@@ -514,16 +546,30 @@ sub _dbg
 {
     my ( $fmt, @data ) = @_;
     if ( $OPT->{debug} ) {
-        my $s = sprintf "%s %s\n", _now(), sprintf $fmt, @data;
-        if ( $OPT->{debug} eq 'warn' || $OPT->{debug} eq 'carp' ) {
+        my $s = sprintf "(%u) %s %s\n", $PID, _now(), sprintf $fmt, @data;
+        if ( $OPT->{debug} eq 'warn' ) {
+            warn $s;
+
+        }
+        elsif ( $OPT->{debug} eq 'carp' ) {
             carp $s;
 
         }
         elsif ( $OPT->{debug} =~ m/^file:(.+)/sm ) {
-            open my $out, '>>', $1 or carp sprintf '[debug IO to "%s" failed: %s] %s', $1, $ERRNO, $s;
-            print {$out} $s;
-            CORE::close($out);
+            my ( $dfile, $out ) = ($1);
+            if ( open( $out, '>>', $dfile ) && flock $out, LOCK_EX ) {
+                print {$out} $s;
+                CORE::close($out);
+            }
+            else {
+                cluck sprintf '%s Debug IO to "%s" failed (%s), switch to "warn"...', _now(), $dfile, $ERRNO;
+                $OPT->{debug} = 'warn';
+                _dbg( $fmt, @data );
+            }
 
+        }
+        elsif ( $OPT->{debug} eq 'syslog' ) {
+            _syslog( 'debug', $s );
         }
         else {
             print {*STDOUT} $s;
@@ -533,13 +579,20 @@ sub _dbg
 }
 
 # ------------------------------------------------------------------------------
+sub _syslog
+{
+    my ( $prio, $msg ) = @_;
+    openlog( "[$APP_NAME $VERSION]", 'ndelay,nofatal', 'user' );
+    syslog( $prio, '%s', $msg );
+    closelog();
+}
+
+# ------------------------------------------------------------------------------
 sub _confess
 {
     my ( $fmt, @data ) = @_;
     my $msg = sprintf $fmt, @data;
-    openlog( "[$APP_NAME $VERSION]", 'ndelay,nofatal', 'user' );
-    syslog( 'err', '%s', $msg );
-    closelog();
+    _syslog( 'err', $msg );
     confess $msg;
 }
 
@@ -589,7 +642,11 @@ IMAP-Tray
 
 =item L<Encode::IMAPUTF7>
 
+=item L<Encode>
+
 =item L<English>
+
+=item L<Fcntl>
 
 =item L<File::Basename>
 
@@ -601,9 +658,9 @@ IMAP-Tray
 
 =item L<Mail::IMAPClient>
 
-=item L<Sys::Syslog>
+=item L<Mutex>
 
-=item L<Thread::Semaphore>
+=item L<Sys::Syslog>
 
 =item L<Try::Tiny>
 
@@ -639,7 +696,7 @@ Source code and issues can be found L<here|https://github.com/klopp/imap-tray>
 
 =head2 L<birdtray|https://github.com/gyunaev/birdtray>
 
-Use B<OnClick => 'birdtray -s'> with I<birdtray>.
+    OnClick => 'birdtray -s'
 
 =head1 CONFIGURATION
 
@@ -649,27 +706,22 @@ See C<imap-tray.conf.sample>
 
 =head2 Application debug
 
-```perl
-    Debug => 1, # use STDOUT
-```
-
-or
-
-```perl
     Debug => 'warn', # use warn
-```
 
 or
 
-```perl
-    Debug => 'file:var/log/imap-tray.log', # use file
-```
+    Debug => 'carp', # use carp
+
+or
+
+    Debug => 'file:/var/log/imap-tray.log', # use file, switch to warn if file open error
+
+Use STDOUT in other cases (if not undef/0 etc).
 
 =head2 Mail server debug
 
 Some as "Application debug", but use C<IMAP/Server> secton:
 
-```perl
     IMAP => 
     {
         Yandex => {
@@ -679,7 +731,10 @@ Some as "Application debug", but use C<IMAP/Server> secton:
             },
         },
     }
-```
+
+=head2 Fatal errors
+
+Use C<syslog (ndelay,nofatal', 'user')>.
 
 =cut
 
