@@ -20,8 +20,8 @@ use File::Temp qw/tempfile/;
 use Gtk3 qw/-init/;
 use LWP::Simple;
 use Mail::IMAPClient;
+use Mutex;
 use Sys::Syslog;
-use Thread::Semaphore;
 use Try::Tiny;
 use URI;
 
@@ -52,7 +52,7 @@ const my %APP_ICO_SRC   => (
     digits    => 'digits.png',
 );
 const my $PDS       => Domain::PublicSuffix->new;
-const my $SEMAPHORE => Thread::Semaphore->new;
+const my $MUTEX => Mutex->new;
 
 my ( $TRAYICON, $OPT, %APP_ICO );
 _app_init();
@@ -65,11 +65,11 @@ Gtk3->main;
 # ------------------------------------------------------------------------------
 sub _app_reload
 {
-    $SEMAPHORE->down;
+    $MUTEX->lock;
     _disconnect_all();
     _app_init();
     alarm 1;
-    $SEMAPHORE->up;
+    $MUTEX->unlock;
 }
 
 # ------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ sub _app_init
 # ------------------------------------------------------------------------------
 sub _mail_loop
 {
-    $SEMAPHORE->down;
+    $MUTEX->lock;
 
     my ( $errors, $unseen, @tooltip ) = ( 0, 0 );
 
@@ -152,7 +152,7 @@ sub _mail_loop
 
     alarm $SEC_IN_MIN;
 
-    $SEMAPHORE->up;
+    $MUTEX->unlock;
     return;
 }
 
@@ -308,10 +308,10 @@ sub _create_tray_icon
                 $item->signal_connect(
                     activate => sub {
                         _dbg( '%s', 'Reconnect all request received.' );
-                        $SEMAPHORE->down;
+                        $MUTEX->lock;
                         _disconnect_all();
                         alarm 1;
-                        $SEMAPHORE->up;
+                        $MUTEX->unlock;
                     }
                 );
                 $item->show;
@@ -658,9 +658,9 @@ IMAP-Tray
 
 =item L<Mail::IMAPClient>
 
-=item L<Sys::Syslog>
+=item L<Mutex>
 
-=item L<Thread::Semaphore>
+=item L<Sys::Syslog>
 
 =item L<Try::Tiny>
 
